@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/criarUsuario.dart';
 import 'package:joga_10/pages/main_page.dart';
-
+import 'package:joga_10/pages/parceiro.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -156,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     child: TextButton(
                       onPressed: () {
-                        if (emailController.text.trim() == "leonoronha@email.com" &&
+                        if (emailController.text.trim() == "admin" &&
                             senhaController.text.trim() == "123") {
                           Navigator.pushReplacement(
                             context,
@@ -212,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: Alignment.center,
                   child: TextButton(
                     onPressed: () {
-                      // Se o usuário quiser criar uma conta, navegue para a página "criarUsuario.dart"
+                      // Navegue para a página "criarUsuario.dart" quando o botão "Criar Conta" for pressionado
                       Navigator.push(context, MaterialPageRoute(builder: (context) => RegistrationPage()));
                     },
                     style: ButtonStyle(
@@ -225,6 +225,35 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     child: const Text(
                       "Criar conta",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 10,  // Adicione algum espaço entre os botões
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 30),
+                  height: 30,
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                     Navigator.push(context, MaterialPageRoute(builder: (context) => ParceiroPage()));
+                    },
+                    style: ButtonStyle(
+                      shape: MaterialStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      backgroundColor: MaterialStateProperty.all(Colors.blue), // Personalize a cor conforme necessário
+                    ),
+                    child: const Text(
+                      "Torne-se Parceiro",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,

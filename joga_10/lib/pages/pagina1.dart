@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/pages/criarPartida.dart';
 
 class Pagina1Page extends StatefulWidget {
   const Pagina1Page({Key? key}) : super(key: key);
@@ -22,7 +23,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // Adicionar ação ao botão "Criar Partida"
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => CriarPartidaPage()));
                     },
                     child: Text("Criar Partida"),
                   ),
