@@ -1,14 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/criarUsuario.dart';
+import 'package:joga_10/pages/esqueciSenha.dart';
 import 'package:joga_10/pages/main_page.dart';
 import 'package:joga_10/pages/parceiro.dart';
+import 'package:http/http.dart' as http;
 
+/*
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
+}*/
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
 }
+
 
 class _LoginPageState extends State<LoginPage> {
   var emailController = TextEditingController(text: "");
@@ -155,23 +165,9 @@ class _LoginPageState extends State<LoginPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () {
-                        if (emailController.text.trim() == "admin" &&
-                            senhaController.text.trim() == "123") {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainPage(),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Erro ao efetuar o login"),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: () {login();}  // Chama o método login quando o botão é pressionado                       
+     
+                      ,
                       style: ButtonStyle(
                         shape: MaterialStateProperty.all(
                           RoundedRectangleBorder(
@@ -198,11 +194,16 @@ class _LoginPageState extends State<LoginPage> {
                   margin: const EdgeInsets.symmetric(horizontal: 30),
                   height: 30,
                   alignment: Alignment.center,
-                  child: Text(
-                    "Esqueci minha senha",
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w400,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => EsqueciSenhaPage()));
+                    },
+                    child: Text(
+                      "Esqueci minha senha",
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ),
@@ -272,4 +273,37 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  
+  Future<void> login() async {
+    final url = Uri.parse('http://192.168.10.104:8080/login'); // Substitua pela URL correta do seu endpoint de login no Spring Boot.
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'email': emailController.text,
+        'password': senhaController.text,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // Login bem-sucedido
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MainPage(),
+        ),
+      );
+    } else {
+      // Login falhou
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erro ao efetuar o login"),
+        ),
+      );
+    }
+  }
+
 }

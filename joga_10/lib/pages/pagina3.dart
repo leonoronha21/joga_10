@@ -21,7 +21,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
         Container(
           alignment: Alignment.center,
           child: Text(
-            "Dados",
+            "Dados de pagamento",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -60,7 +60,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
               ),
               SizedBox(height: 16.0),
               Text(
-                "Email",
+                "CPF",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -74,7 +74,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
                   color: Colors.white,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'seuemail@example.com',
+                  hintText: '000.000.000-00',
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -86,7 +86,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
               ),
               SizedBox(height: 16.0),
               Text(
-                "Gastos (em Real)",
+                "Codigo de Segurança",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -100,7 +100,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
                   color: Colors.white,
                 ),
                 decoration: InputDecoration(
-                  hintText: '0,00',
+                  hintText: '000',
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -112,7 +112,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
               ),
               SizedBox(height: 16.0),
               Text(
-                "Total de Partidas",
+                "Número do cartão",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -125,7 +125,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
                   color: Colors.white,
                 ),
                 decoration: InputDecoration(
-                  hintText: '0',
+                  hintText: '4365 0000 0000 0000',
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -142,7 +142,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
               ),
               SizedBox(height: 16.0),
               Text(
-                "Total de Partidas: $totalPartidas",
+                "Bandeira: $totalPartidas",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

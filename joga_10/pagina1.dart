@@ -32,7 +32,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
                     onPressed: () {
                       // Adicionar ação ao botão "Buscar Estabelecimento"
                     },
-                    child: Text("Acompanhar partida"),
+                    child: Text("Buscar Estabelecimento"),
                   ),
                 ],
               ),
@@ -44,7 +44,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
           child: Column(
             children: [
               Text(
-                "Historico de partidas",
+                "Partidas Existentes",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -95,7 +95,7 @@ class PartidaItemWidget extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        "Data da partida $partidaNumber",
+        "Descrição da partida $partidaNumber",
         style: TextStyle(
           color: Colors.white,
         ),
@@ -104,7 +104,7 @@ class PartidaItemWidget extends StatelessWidget {
         onPressed: () {
           // Adicionar ação para "Entrar" na partida
         },
-        child: Text("Visualizar"),
+        child: Text("Entrar"),
       ),
       onTap: () {
         // Adicionar ação ao toque no item, se necessário

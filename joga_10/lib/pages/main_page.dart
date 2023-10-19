@@ -115,7 +115,7 @@ class _MainPageState extends State<MainPage> {
                       label: "Home", icon: Icon(Icons.home)),
                   BottomNavigationBarItem(label: "Buscar partida", icon: Icon(Icons.search)),
                   BottomNavigationBarItem(
-                      label: "Dados", icon: Icon(Icons.data_thresholding))
+                      label: "Pagamento", icon: Icon(Icons.payment))
                 ])
           ],
         ),

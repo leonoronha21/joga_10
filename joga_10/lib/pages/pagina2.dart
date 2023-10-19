@@ -59,7 +59,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
         Container(
           alignment: Alignment.center,
           child: Text(
-            "BUSCAR PARTIDA",
+            "Buscar partida",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
