@@ -38,8 +38,10 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(
-                  height: 50,
+                 Expanded(
+                  child: SizedBox(
+                    height: 50,
+                  ),
                 ),
                 Row(
                   children: [
@@ -89,19 +91,19 @@ class _LoginPageState extends State<LoginPage> {
                       contentPadding: EdgeInsets.only(top: 0),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: Color.fromARGB(255, 141, 79, 151),
+                          color: Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                       focusedBorder: UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: Color.fromARGB(255, 141, 79, 151),
+                          color: Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                       hintText: "Email",
                       hintStyle: TextStyle(color: Colors.white),
                       prefixIcon: Icon(
                         Icons.person,
-                        color: Color.fromARGB(255, 141, 79, 151),
+                        color: Color.fromARGB(255, 33, 150, 243),
                       ),
                     ),
                   ),
@@ -125,19 +127,19 @@ class _LoginPageState extends State<LoginPage> {
                       contentPadding: const EdgeInsets.only(top: 0),
                       enabledBorder: const UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: Color.fromARGB(255, 141, 79, 151),
+                          color: Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                       focusedBorder: const UnderlineInputBorder(
                         borderSide: BorderSide(
-                          color: Color.fromARGB(255, 141, 79, 151),
+                          color: Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                       hintText: "Senha",
                       hintStyle: const TextStyle(color: Colors.white),
                       prefixIcon: const Icon(
                         Icons.lock,
-                        color: Color.fromARGB(255, 141, 79, 151),
+                        color: Color.fromARGB(255, 33, 150, 243),
                       ),
                       suffixIcon: InkWell(
                         onTap: () {
@@ -149,7 +151,8 @@ class _LoginPageState extends State<LoginPage> {
                           isObscureText
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: const Color.fromARGB(255, 141, 79, 151),
+                             // Color.fromARGB(255, 33, 150, 243),
+                          color: const Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                     ),
@@ -175,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         backgroundColor: MaterialStateProperty.all(
-                          const Color.fromARGB(255, 141, 79, 151),
+                          const Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                       child: const Text(
@@ -201,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Text(
                       "Esqueci minha senha",
                       style: TextStyle(
-                        color: Colors.blue,
+                        color: Colors.red,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -291,11 +294,13 @@ class _LoginPageState extends State<LoginPage> {
     if (response.statusCode == 200) {
       // Login bem-sucedido
       Navigator.pushReplacement(
+        
         context,
         MaterialPageRoute(
           builder: (context) => MainPage(),
         ),
       );
+      
     } else {
       // Login falhou
       ScaffoldMessenger.of(context).showSnackBar(

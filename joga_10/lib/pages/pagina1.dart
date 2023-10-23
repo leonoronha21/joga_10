@@ -23,7 +23,8 @@ class _Pagina1PageState extends State<Pagina1Page> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => CriarPartidaPage()));
+                      // ignore: prefer_const_constructors
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => CriarPartidaPage(selectedLocation: '', selectedTime: '',)));
                     },
                     child: Text("Criar Partida"),
                   ),

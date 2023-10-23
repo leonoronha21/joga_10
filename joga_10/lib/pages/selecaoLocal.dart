@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/pages/criarPartida.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -31,8 +32,8 @@ class SelecionaLocalPage extends StatelessWidget {
             preco: 'R\$ 50/hora',
           ),
           // Quadras do Primeiro Local
-          QuadraItem(),
-          QuadraItem(),
+          QuadraItem(nomeQuadra: 'Quadra A', precoQuadra: 'R\$ 50/hora'),
+          QuadraItem(nomeQuadra: 'Quadra B', precoQuadra: 'R\$ 50/hora'),
 
           // Detalhes do Segundo Local
           LocalItem(
@@ -45,10 +46,10 @@ class SelecionaLocalPage extends StatelessWidget {
             preco: 'R\$ 60/hora',
           ),
           // Quadras do Segundo Local
-          QuadraItem(),
-          QuadraItem(),
-          QuadraItem(),
-          QuadraItem(),
+          QuadraItem(nomeQuadra: 'Quadra X', precoQuadra: 'R\$ 60/hora'),
+          QuadraItem(nomeQuadra: 'Quadra Y', precoQuadra: 'R\$ 60/hora'),
+          QuadraItem(nomeQuadra: 'Quadra Z', precoQuadra: 'R\$ 60/hora'),
+          QuadraItem(nomeQuadra: 'Quadra W', precoQuadra: 'R\$ 60/hora'),
         ],
       ),
     );
@@ -125,6 +126,26 @@ class LocalItem extends StatelessWidget {
 }
 
 class QuadraItem extends StatelessWidget {
+  final String nomeQuadra;
+  final String precoQuadra;
+
+  QuadraItem({
+    required this.nomeQuadra,
+    required this.precoQuadra,
+  });
+
+  void reservarQuadra(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HorariosDisponiveisPage(
+          nomeQuadra: nomeQuadra,
+          precoQuadra: precoQuadra, selectedTime: '', selectedLocation: '',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -134,24 +155,19 @@ class QuadraItem extends StatelessWidget {
         height: 80,
       ),
       title: Text(
-        'Nome da Quadra',
+        nomeQuadra,
         style: TextStyle(color: Colors.white),
       ),
       subtitle: Text(
-        'Preço: R\$ 50/hora',
+        'Preço: $precoQuadra',
         style: TextStyle(color: Colors.white),
       ),
       trailing: ElevatedButton(
         onPressed: () {
-          // Ação de reserva da quadra
-          // Implemente a lógica de reserva aqui
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => HorariosDisponiveisPage()),
-          );
+          reservarQuadra(context); // Chame a função de reserva ao clicar no botão
         },
         child: Text(
-          'Reservar',
+          'Horários',
           style: TextStyle(color: Colors.white),
         ),
       ),
@@ -160,6 +176,18 @@ class QuadraItem extends StatelessWidget {
 }
 
 class HorariosDisponiveisPage extends StatelessWidget {
+  final String nomeQuadra;
+  final String precoQuadra;
+  final String selectedLocation; // Adicione este parâmetro
+  final String selectedTime; // Adicione este parâmetro
+
+  HorariosDisponiveisPage({
+    required this.nomeQuadra,
+    required this.precoQuadra,
+    required this.selectedLocation, // Passe o local selecionado
+    required this.selectedTime, // Passe o horário selecionado
+  });
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,7 +197,7 @@ class HorariosDisponiveisPage extends StatelessWidget {
         backgroundColor: Color.fromARGB(68, 56, 25, 139),
       ),
       body: ListView.builder(
-        itemCount: 25, // Para representar horários de 00hrs a 24hrs
+        itemCount: 25,
         itemBuilder: (context, index) {
           final hour = index < 10 ? '0$index:00' : '$index:00';
           return ListTile(
@@ -177,10 +205,18 @@ class HorariosDisponiveisPage extends StatelessWidget {
               hour,
               style: TextStyle(color: Colors.white),
             ),
-            // Adicione aqui a lógica para reservar o horário
             trailing: ElevatedButton(
               onPressed: () {
-                // Lógica de reserva do horário
+                // Passar informações para a página CriarPartidaPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CriarPartidaPage(
+                      selectedLocation: selectedLocation, // Passe o local selecionado
+                      selectedTime: hour, // Passe o horário selecionado
+                    ),
+                  ),
+                );
               },
               child: Text(
                 'Reservar',

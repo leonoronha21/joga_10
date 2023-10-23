@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
-
+/*
 void main() {
   runApp(MaterialApp(
     home: CriarPartidaPage(),
   ));
-}
-
+}*/
+/*
 class CriarPartidaPage extends StatefulWidget {
   const CriarPartidaPage({Key? key}) : super(key: key);
+
+  @override
+  _CriarPartidaPageState createState() => _CriarPartidaPageState();
+}*/
+class CriarPartidaPage extends StatefulWidget {
+  final String selectedLocation; // Adicione este parâmetro para o local selecionado
+  final String selectedTime; // Adicione este parâmetro para o horário selecionado
+
+  CriarPartidaPage({
+    required this.selectedLocation,
+    required this.selectedTime,
+  });
 
   @override
   _CriarPartidaPageState createState() => _CriarPartidaPageState();
@@ -18,8 +30,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
   String selectedSport = 'Futebol';
   List<String> equipe1Members = ['Membro1Equipe1'];
   List<String> equipe2Members = ['Membro1Equipe2'];
-  String selectedLocation = ''; // Variável para armazenar o local selecionado
-  String selectedTime = ''; // Variável para armazenar o horário selecionado
+
   bool isSingleTeam = false; // Variável para armazenar a seleção de time único
 
   @override
@@ -43,26 +54,31 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
             ),
           ),
           SizedBox(height: 8.0),
-          DropdownButton<String>(
-            value: selectedSport,
-            onChanged: (String? newValue) {
-              setState(() {
-                selectedSport = newValue!;
-              });
-            },
-            items: <String>[
-              'Futebol',
-              'Vôlei',
-              'Basquete',
-              'Futevôlei',
-              'Tênis',
-            ].map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-          ),
+        DropdownButton<String>(
+  value: selectedSport,
+  onChanged: (String? newValue) {
+    setState(() {
+      selectedSport = newValue!;
+    });
+  },
+  items: <String>[
+    'Futebol',
+    'Vôlei',
+    'Basquete',
+    'Futevôlei',
+    'Tênis',
+  ].map<DropdownMenuItem<String>>((String value) {
+    return DropdownMenuItem<String>(
+      value: value,
+      child: Text(
+        value,
+        style: TextStyle(
+          color: value == selectedSport ? Colors.blue : Colors.black, // Define a cor do texto
+        ),
+      ),
+    );
+  }).toList(),
+),
           SizedBox(height: 20.0),
           // RadioButton para escolher entre time único (Sim) ou dois times (Não)
           RadioListTile(
@@ -89,7 +105,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
           ),
           // Label para mostrar o local e o horário selecionados
           Text(
-            'Local Selecionado: $selectedLocation\nHorário Selecionado: $selectedTime',
+            'Local Selecionado: ${widget.selectedLocation}\nHorário Selecionado: ${widget.selectedTime}',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -225,7 +241,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
             },
-            child: Text("Finalizar"),
+            child: Text("Selecionar Local"),
           ),
         ],
       ),
