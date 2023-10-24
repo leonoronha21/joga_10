@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
 /*
 void main() {
@@ -30,11 +31,48 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
   String selectedSport = 'Futebol';
   List<String> equipe1Members = ['Membro1Equipe1'];
   List<String> equipe2Members = ['Membro1Equipe2'];
-
   bool isSingleTeam = false; // Variável para armazenar a seleção de time único
+  bool isLocationAndTimeSelected = false; // Variável para rastrear a seleção de local e horário
 
   @override
   Widget build(BuildContext context) {
+    // Verifique se tanto o local quanto o horário estão preenchidos
+    if (widget.selectedLocation.isNotEmpty && widget.selectedTime.isNotEmpty) {
+      isLocationAndTimeSelected = true;
+    } else {
+      isLocationAndTimeSelected = false;
+    }
+
+    ElevatedButton createButton() {
+      if (isLocationAndTimeSelected) {
+        return ElevatedButton(
+          onPressed: () {
+          Navigator.push(
+           context,
+            MaterialPageRoute(
+              builder: (context) => PartidaPage(
+                equipe1Members: equipe1Members,
+                equipe2Members: equipe2Members,
+                selectedLocation: widget.selectedLocation,
+                selectedTime: widget.selectedTime,
+                selectedSport: selectedSport,
+                
+              ),
+            ),
+          );
+          },
+          child: Text("Finalizar"),
+        );
+      } else {
+        return ElevatedButton(
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
+          },
+          child: Text("Selecionar Local"),
+        );
+      }
+    }
+
     return Scaffold(
       backgroundColor: Color.fromARGB(68, 56, 25, 139),
       appBar: AppBar(
@@ -54,36 +92,35 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
             ),
           ),
           SizedBox(height: 8.0),
-        DropdownButton<String>(
-  value: selectedSport,
-  onChanged: (String? newValue) {
-    setState(() {
-      selectedSport = newValue!;
-    });
-  },
-  items: <String>[
-    'Futebol',
-    'Vôlei',
-    'Basquete',
-    'Futevôlei',
-    'Tênis',
-  ].map<DropdownMenuItem<String>>((String value) {
-    return DropdownMenuItem<String>(
-      value: value,
-      child: Text(
-        value,
-        style: TextStyle(
-          color: value == selectedSport ? Colors.blue : Colors.black, // Define a cor do texto
-        ),
-      ),
-    );
-  }).toList(),
-),
+          DropdownButton<String>(
+            value: selectedSport,
+            onChanged: (String? newValue) {
+              setState(() {
+                selectedSport = newValue!;
+              });
+            },
+            items: <String>[
+              'Futebol',
+              'Vôlei',
+              'Basquete',
+              'Futevôlei',
+              'Tênis',
+            ].map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: value == selectedSport ? Colors.blue : Colors.black,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
           SizedBox(height: 20.0),
           // RadioButton para escolher entre time único (Sim) ou dois times (Não)
           RadioListTile(
-            
-            title: Text('Time Único (Sim)', style: TextStyle(color: Colors.white),),
+            title: Text('Time Único (Sim)', style: TextStyle(color: Colors.white)),
             value: true,
             groupValue: isSingleTeam,
             onChanged: (bool? value) {
@@ -93,14 +130,13 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
             },
           ),
           RadioListTile(
-            title: Text('Dois Times (Não)',  style: TextStyle(color: Colors.white),),
+            title: Text('Dois Times (Não)', style: TextStyle(color: Colors.white)),
             value: false,
             groupValue: isSingleTeam,
             onChanged: (bool? value) {
               setState(() {
                 isSingleTeam = value!;
               });
-              
             },
           ),
           // Label para mostrar o local e o horário selecionados
@@ -139,7 +175,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                         height: 64.0,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.blue, // Cor do círculo (pode ser uma imagem)
+                          color: Colors.blue,
                         ),
                       ),
                       trailing: ElevatedButton(
@@ -201,7 +237,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                       height: 64.0,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.blue, // Cor do círculo (pode ser uma imagem)
+                        color: Colors.blue,
                       ),
                     ),
                     trailing: ElevatedButton(
@@ -237,12 +273,8 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
             ],
           ),
           SizedBox(height: 20.0),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
-            },
-            child: Text("Selecionar Local"),
-          ),
+          // Botão de criação (altera de acordo com a variável isLocationAndTimeSelected)
+          createButton(),
         ],
       ),
     );

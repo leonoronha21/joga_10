@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/criarPartida.dart';
+import 'package:joga_10/pages/partida.dart';
 
 class Pagina1Page extends StatefulWidget {
   const Pagina1Page({Key? key}) : super(key: key);
@@ -31,7 +32,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
                   SizedBox(width: 16.0), // Adiciona espaço entre os botões
                   ElevatedButton(
                     onPressed: () {
-                      // Adicionar ação ao botão "Buscar Estabelecimento"
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => PartidaPage(equipe1Members: [], equipe2Members: [], selectedLocation: '', selectedTime: '', selectedSport: '',)));
                     },
                     child: Text("Acompanhar partida"),
                   ),

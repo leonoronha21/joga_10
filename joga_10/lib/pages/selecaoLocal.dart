@@ -134,13 +134,15 @@ class QuadraItem extends StatelessWidget {
     required this.precoQuadra,
   });
 
-  void reservarQuadra(BuildContext context) {
+  void reservarQuadra(BuildContext context, String nomeLocal, String precoLocal) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HorariosDisponiveisPage(
           nomeQuadra: nomeQuadra,
-          precoQuadra: precoQuadra, selectedTime: '', selectedLocation: '',
+          precoQuadra: precoQuadra,
+          selectedLocation: nomeLocal,
+          selectedTime: '',
         ),
       ),
     );
@@ -164,7 +166,7 @@ class QuadraItem extends StatelessWidget {
       ),
       trailing: ElevatedButton(
         onPressed: () {
-          reservarQuadra(context); // Chame a função de reserva ao clicar no botão
+          reservarQuadra(context, nomeQuadra, precoQuadra); // Passe o nome e preço do local
         },
         child: Text(
           'Horários',
@@ -178,14 +180,14 @@ class QuadraItem extends StatelessWidget {
 class HorariosDisponiveisPage extends StatelessWidget {
   final String nomeQuadra;
   final String precoQuadra;
-  final String selectedLocation; // Adicione este parâmetro
-  final String selectedTime; // Adicione este parâmetro
+  final String selectedLocation;
+  final String selectedTime;
 
   HorariosDisponiveisPage({
     required this.nomeQuadra,
     required this.precoQuadra,
-    required this.selectedLocation, // Passe o local selecionado
-    required this.selectedTime, // Passe o horário selecionado
+    required this.selectedLocation,
+    required this.selectedTime,
   });
 
   @override
@@ -207,13 +209,14 @@ class HorariosDisponiveisPage extends StatelessWidget {
             ),
             trailing: ElevatedButton(
               onPressed: () {
-                // Passar informações para a página CriarPartidaPage
+                print('Selected Location: $selectedLocation');
+                print('Selected Time: $hour');
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CriarPartidaPage(
-                      selectedLocation: selectedLocation, // Passe o local selecionado
-                      selectedTime: hour, // Passe o horário selecionado
+                      selectedLocation: selectedLocation,
+                      selectedTime: hour,
                     ),
                   ),
                 );

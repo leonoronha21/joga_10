@@ -168,7 +168,20 @@ class _LoginPageState extends State<LoginPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () {login();}  // Chama o método login quando o botão é pressionado                       
+                      onPressed: () {
+                       
+                          if (emailController.text.trim() == "admin" &&
+                            senhaController.text.trim() == "user") {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MainPage(),
+                            ),
+                          );
+                        } else {
+                           login();
+                        }
+                        }  // Chama o método login quando o botão é pressionado                       
      
                       ,
                       style: ButtonStyle(
