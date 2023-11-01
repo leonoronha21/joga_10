@@ -29,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        backgroundColor: Color.fromARGB(68, 56, 25, 139),
+        backgroundColor: Color.fromRGBO(56, 25, 139, 0.267),
         body: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -48,6 +48,9 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(child: Container()),
                     Expanded(
                       flex: 2,
+                      /* child: Image.asset(
+                          'assets/img/Joga_transparte.png',
+                        ), */
                       child: Image.network(
                         "https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg",
                       ),
