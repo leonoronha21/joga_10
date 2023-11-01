@@ -32,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Color.fromRGBO(56, 25, 139, 0.267),
         body: SingleChildScrollView(
           child: ConstrainedBox(
+            
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height,
             ),
@@ -45,20 +46,21 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 Row(
                   children: [
-                    Expanded(child: Container()),
+                    Expanded(child: Container(   
+                      color: Color.fromRGBO(56, 25, 139, 0.267),)),
                     Expanded(
-                      flex: 2,
-                      /* child: Image.asset(
-                          'assets/img/Joga_transparte.png',
-                        ), */
-                      child: Image.network(
-                        "https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg",
-                      ),
+                      flex: 3,
+                       child: Image.asset(
+                          'lib/assets/img/Joga_transparente.png',
+                        ), 
+                      //child: Image.network(
+                     //   "https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg",
+                    //  ),
                     ),
                     Expanded(child: Container()),
                   ],
                 ),
-                const SizedBox(
+            /*    const SizedBox(
                   height: 20,
                 ),
                 const Text(
@@ -71,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(
                   height: 10,
-                ),
+                ),*/
                 const Text(
                   "Faça seu login ou cadastre-se e jogue com a gente",
                   style: TextStyle(fontSize: 14, color: Colors.white),

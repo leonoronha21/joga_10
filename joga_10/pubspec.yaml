@@ -66,6 +66,10 @@ flutter:
     - lib/assets/img/icon.png
     - lib/assets/img/icon2.png
     - lib/assets/img/Joga.png
+    - lib/assets/img/Joga_transparente.png
+    - lib/assets/img/user_profile.jpg
+    - lib/assets/img/campo.jpg
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

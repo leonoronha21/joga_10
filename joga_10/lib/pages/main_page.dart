@@ -23,29 +23,36 @@ class _MainPageState extends State<MainPage> {
       child: Scaffold(
         backgroundColor: Color.fromARGB(68, 56, 25, 139),
         appBar: AppBar(
-          backgroundColor: Color.fromARGB(68, 56, 25, 139),
-          title: const Text("Joga 10"),
-        ),
+            backgroundColor: Color.fromARGB(68, 56, 25, 139),
+            title: Image.asset(
+              'lib/assets/img/Joga_transparente.png',
+              width: 120, // Ajuste a largura conforme necessário
+            ),
+            centerTitle: true, // Centraliza a imagem no AppBar
+          ),
         drawer: Drawer(
-          
+        
           child: Column(
-               children: [
-                
-                UserAccountsDrawerHeader(
-                                
-                accountName: Text("Nome do Usuário"), // Nome do usuário
-                accountEmail: Text("email@example.com"),
-                decoration: BoxDecoration(
-                shape: BoxShape.rectangle,
-                         color: Color.fromARGB(232, 55, 25, 139), // Cor de fundo do quadrado
-                  ), // Email do usuário
-                //currentAccountPicture: CircleAvatar(
-                  // Foto do usuário
-                  //backgroundImage: AssetImage("assets/img/user_profile.jpg"),
-              //  ),
-              ),
+           
+                    children: [       
+                               
+                      UserAccountsDrawerHeader( 
+                                                                    
+                      accountName: Text("Nome do Usuário"), // Nome do usuário
+                      accountEmail: Text("email@example.com"),
+                      decoration: BoxDecoration(
+                      shape: BoxShape.rectangle,
+                                color: Color.fromARGB(232, 56, 25, 139), // Cor de fundo do quadrado
+                        ), // Email do usuário
+                      currentAccountPicture: CircleAvatar(
+                        // Foto do usuário
+                        backgroundImage: AssetImage("lib/assets/img/user_profile.jpg"),
+                      ),
+                    ),
               Expanded(
+                
                 child: ListView(
+                  
                   children: [
                     ListTile(
                       title: Text("Amigo 1"),
@@ -77,7 +84,7 @@ class _MainPageState extends State<MainPage> {
                 },
               ),
               ListTile(
-                title: Text("Configurações"),
+                title: Text("Trocar Senha"),
                 onTap: () {
                   // Ação a ser executada quando "Configurações" é selecionado
                 },

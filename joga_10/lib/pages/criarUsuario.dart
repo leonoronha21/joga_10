@@ -165,9 +165,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () {
-                // Lógica de registro aqui
-                // Você pode validar os campos e navegar para a tela de login
-                // Este exemplo não inclui validação por simplicidade.
+             
                 usuarioservice.SaveUsuario(firstNameController.text, 
                 lastNameController.text, emailController.text, 
                 passwordController.text, cityController.text, bairroController.text, streetController.text, 
