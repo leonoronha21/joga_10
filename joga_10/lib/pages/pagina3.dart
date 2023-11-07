@@ -17,16 +17,19 @@ class _Pagina3PageState extends State<Pagina3Page> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Color.fromARGB(68, 56, 25, 139),
+      
+        backgroundColor: Color.fromARGB(68, 56, 25, 100),
       body: ListView(
           
         children: <Widget>[
           Container(
-             color: Color.fromARGB(68, 56, 25, 139),
+           color: Color.fromARGB(68, 56, 25, 100),
             alignment: Alignment.center,
-            child: Text(
+            child:
+             Text(
               "Dados de pagamento",
               style: TextStyle(
+                
                 color: Colors.white,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -35,6 +38,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
           ),
           SizedBox(height: 16.0),
           Container(
+            
             padding: EdgeInsets.all(16.0),
             child: Column(
               children: [

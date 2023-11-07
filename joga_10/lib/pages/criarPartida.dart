@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
+import 'package:joga_10/service/PartidaService.dart';
+
 /*
 void main() {
   runApp(MaterialApp(
@@ -15,12 +17,17 @@ class CriarPartidaPage extends StatefulWidget {
   _CriarPartidaPageState createState() => _CriarPartidaPageState();
 }*/
 class CriarPartidaPage extends StatefulWidget {
+  final String estabelecimento; 
+  final String price; 
   final String selectedLocation; // Adicione este parâmetro para o local selecionado
   final String selectedTime; // Adicione este parâmetro para o horário selecionado
 
   CriarPartidaPage({
+    required this.estabelecimento,
+    required this.price,
     required this.selectedLocation,
     required this.selectedTime,
+    
   });
 
   @override
@@ -37,7 +44,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
   @override
   Widget build(BuildContext context) {
     // Verifique se tanto o local quanto o horário estão preenchidos
-    if (widget.selectedLocation.isNotEmpty && widget.selectedTime.isNotEmpty) {
+    if (widget.selectedLocation.isNotEmpty && widget.selectedTime.isNotEmpty && widget.price.isNotEmpty && widget.estabelecimento.isNotEmpty) {
       isLocationAndTimeSelected = true;
     } else {
       isLocationAndTimeSelected = false;
@@ -46,9 +53,32 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     ElevatedButton createButton() {
       if (isLocationAndTimeSelected) {
         return ElevatedButton(
-          onPressed: () {
+       onPressed: () async {
+        // RETIRAR ESSAS VARIAVEIS APOS IMPLEMENTAR GETTERS
+        
+     
+        final response = await PartidaService().SavePartida(
+          7, // Substitua por um valor apropriado
+          1,          // Substitua por um valor apropriado
+          1,            // Substitua por um valor apropriado
+          "1 ",           // Substitua por um valor apropriado
+          "2023-11-04 "+widget.selectedTime+":00",         // Substitua por um valor apropriado
+          "0",               // Status está definido como "0" no seu exemplo
+         "120",             // Substitua por um valor apropriado
+        );
+
+        if (response.statusCode == 200) {
+          // Se a resposta for bem-sucedida (código 200), navegue para a página de partida
+
+        final snackBar = SnackBar(
+                      content: Text('Partida criada com sucesso!'),
+                      duration: Duration(seconds: 3), // Duração da mensagem
+                    );
+                     ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+
           Navigator.push(
-           context,
+            context,
             MaterialPageRoute(
               builder: (context) => PartidaPage(
                 equipe1Members: equipe1Members,
@@ -56,14 +86,19 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                 selectedLocation: widget.selectedLocation,
                 selectedTime: widget.selectedTime,
                 selectedSport: selectedSport,
-                
+                estabelecimento: widget.estabelecimento,
+                price: widget.price
               ),
             ),
           );
-          },
-          child: Text("Finalizar"),
-        );
-      } else {
+        } else {
+          // Lidar com erros aqui se necessário
+          print("Erro ao criar a partida: ${response.body}");
+        }
+      },
+      child: Text("Finalizar"),
+    );
+  } else {
         return ElevatedButton(
           onPressed: () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
@@ -141,7 +176,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
           ),
           // Label para mostrar o local e o horário selecionados
           Text(
-            'Local Selecionado: ${widget.selectedLocation}\nHorário Selecionado: ${widget.selectedTime}',
+            'Local Selecionado: ${widget.selectedLocation}\nHorário Selecionado: ${widget.selectedTime}\nEstabelecimento Selecionado: ${widget.estabelecimento}\nPreco Selecionado: ${widget.price}',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,

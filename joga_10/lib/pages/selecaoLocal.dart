@@ -32,8 +32,16 @@ class SelecionaLocalPage extends StatelessWidget {
             preco: 'R\$ 50/hora',
           ),
           // Quadras do Primeiro Local
-          QuadraItem(nomeQuadra: 'Quadra A', precoQuadra: 'R\$ 50/hora'),
-          QuadraItem(nomeQuadra: 'Quadra B', precoQuadra: 'R\$ 50/hora'),
+          QuadraItem(
+            nomeQuadra: 'Quadra A',
+            precoQuadra: 'R\$ 50/hora',
+            nomeLocal: 'Local 1', // Passe o nome do local
+          ),
+          QuadraItem(
+            nomeQuadra: 'Quadra B',
+            precoQuadra: 'R\$ 50/hora',
+            nomeLocal: 'Local 1', // Passe o nome do local
+          ),
 
           // Detalhes do Segundo Local
           LocalItem(
@@ -46,10 +54,26 @@ class SelecionaLocalPage extends StatelessWidget {
             preco: 'R\$ 60/hora',
           ),
           // Quadras do Segundo Local
-          QuadraItem(nomeQuadra: 'Quadra X', precoQuadra: 'R\$ 60/hora'),
-          QuadraItem(nomeQuadra: 'Quadra Y', precoQuadra: 'R\$ 60/hora'),
-          QuadraItem(nomeQuadra: 'Quadra Z', precoQuadra: 'R\$ 60/hora'),
-          QuadraItem(nomeQuadra: 'Quadra W', precoQuadra: 'R\$ 60/hora'),
+          QuadraItem(
+            nomeQuadra: 'Quadra X',
+            precoQuadra: 'R\$ 60/hora',
+            nomeLocal: 'Local 2', // Passe o nome do local
+          ),
+          QuadraItem(
+            nomeQuadra: 'Quadra Y',
+            precoQuadra: 'R\$ 60/hora',
+            nomeLocal: 'Local 2', // Passe o nome do local
+          ),
+          QuadraItem(
+            nomeQuadra: 'Quadra Z',
+            precoQuadra: 'R\$ 60/hora',
+            nomeLocal: 'Local 2', // Passe o nome do local
+          ),
+          QuadraItem(
+            nomeQuadra: 'Quadra W',
+            precoQuadra: 'R\$ 60/hora',
+            nomeLocal: 'Local 2', // Passe o nome do local
+          ),
         ],
       ),
     );
@@ -128,20 +152,22 @@ class LocalItem extends StatelessWidget {
 class QuadraItem extends StatelessWidget {
   final String nomeQuadra;
   final String precoQuadra;
+  final String nomeLocal; // Adicione o nome do local como parâmetro
 
   QuadraItem({
     required this.nomeQuadra,
     required this.precoQuadra,
+    required this.nomeLocal, // Adicione o nome do local como parâmetro
   });
 
-  void reservarQuadra(BuildContext context, String nomeLocal, String precoLocal) {
+  void reservarQuadra(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HorariosDisponiveisPage(
           nomeQuadra: nomeQuadra,
           precoQuadra: precoQuadra,
-          selectedLocation: nomeLocal,
+          nomeLocal: nomeLocal, // Passe o nome do local
           selectedTime: '',
         ),
       ),
@@ -166,7 +192,7 @@ class QuadraItem extends StatelessWidget {
       ),
       trailing: ElevatedButton(
         onPressed: () {
-          reservarQuadra(context, nomeQuadra, precoQuadra); // Passe o nome e preço do local
+          reservarQuadra(context); // Passe o nome e preço do local
         },
         child: Text(
           'Horários',
@@ -180,17 +206,17 @@ class QuadraItem extends StatelessWidget {
 class HorariosDisponiveisPage extends StatelessWidget {
   final String nomeQuadra;
   final String precoQuadra;
-  final String selectedLocation;
+  final String nomeLocal; // Adicione o nome do local como parâmetro
   final String selectedTime;
 
   HorariosDisponiveisPage({
     required this.nomeQuadra,
     required this.precoQuadra,
-    required this.selectedLocation,
+    required this.nomeLocal, // Adicione o nome do local como parâmetro
     required this.selectedTime,
   });
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.fromARGB(68, 56, 25, 139),
@@ -209,14 +235,14 @@ class HorariosDisponiveisPage extends StatelessWidget {
             ),
             trailing: ElevatedButton(
               onPressed: () {
-                print('Selected Location: $selectedLocation');
-                print('Selected Time: $hour');
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CriarPartidaPage(
-                      selectedLocation: selectedLocation,
+                      selectedLocation: nomeQuadra, // Passe o nome do local para CriarPartidaPage
                       selectedTime: hour,
+                      price: precoQuadra,
+                      estabelecimento: nomeLocal,
                     ),
                   ),
                 );

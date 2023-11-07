@@ -8,6 +8,7 @@ class PartidaItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      
       isThreeLine: true,
       leading: Container(
         width: 64.0,
@@ -57,6 +58,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
     return ListView(
       children: <Widget>[
         Container(
+          color: Color.fromARGB(68, 56, 25, 100),
           alignment: Alignment.center,
           child: Text(
             "Buscar partida",

@@ -42,7 +42,7 @@ class _MainPageState extends State<MainPage> {
                       accountEmail: Text("email@example.com"),
                       decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
-                                color: Color.fromARGB(232, 56, 25, 139), // Cor de fundo do quadrado
+                                color: Color.fromARGB(255, 0, 10,80), // Cor de fundo do quadrado
                         ), // Email do usuário
                       currentAccountPicture: CircleAvatar(
                         // Foto do usuário
