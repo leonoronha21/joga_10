@@ -176,7 +176,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
           ),
           // Label para mostrar o local e o horário selecionados
           Text(
-            'Local Selecionado: ${widget.selectedLocation}\nHorário Selecionado: ${widget.selectedTime}\nEstabelecimento Selecionado: ${widget.estabelecimento}\nPreco Selecionado: ${widget.price}',
+            'Estabelecimento Selecionado: ${widget.estabelecimento}\nHorário Selecionado: ${widget.selectedTime}\nLocal Selecionado: ${widget.selectedLocation}\nPreço Selecionado: ${widget.price}\n\n\n',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,

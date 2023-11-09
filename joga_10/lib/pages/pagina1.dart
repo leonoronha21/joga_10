@@ -58,7 +58,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
-                itemCount: 10, // Número de itens na lista de partidas existentes
+                itemCount: 5, // Número de itens na lista de partidas existentes
                 itemBuilder: (context, index) {
                   // Crie um widget de item da lista aqui
                   return PartidaItemWidget(

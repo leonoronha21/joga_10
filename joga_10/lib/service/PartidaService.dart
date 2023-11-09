@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/model/Partida.dart';
 
 class PartidaService {
+
+
+
 
   Future<http.Response> SavePartida(int estabelecimento, int quadra, int usuario, 
   String duracao, String data_hora, String status, String preco) async {
@@ -28,6 +32,16 @@ class PartidaService {
 
     return response;
   }
+   Future<List<Partida>> getAllPartidas() async {
+    final response = await http.get(Uri.parse('http://192.168.10.104:8080/listaPartidas'));
 
+    if (response.statusCode == 200) {
+      Iterable lista = json.decode(response.body);
+      List<Partida> partidas = lista.map((model) => Partida.fromJson(model)).toList();
+      return partidas;
+    } else {
+      throw Exception('Falha ao carregar as partidas');
+    }
+  }
 
 }

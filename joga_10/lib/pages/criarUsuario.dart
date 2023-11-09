@@ -52,7 +52,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
             TextFormField(
               controller: firstNameController,
               decoration: InputDecoration(
-                labelText: 'Seu primeiro nome',
+                labelText: 'Nome',
                 labelStyle: TextStyle(color: Colors.white),
                 focusedBorder: customBorder(),
                 enabledBorder: customBorder(),

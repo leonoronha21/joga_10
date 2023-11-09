@@ -1,47 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/model/Partida.dart';
+import 'package:joga_10/pages/DetalhePartida.dart';
+import 'package:joga_10/service/PartidaService.dart';
 
-class PartidaItemWidget extends StatelessWidget {
-  final int partidaNumber;
-
-  PartidaItemWidget({required this.partidaNumber});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      
-      isThreeLine: true,
-      leading: Container(
-        width: 64.0,
-        height: 64.0,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.blue,
-        ),
-      ),
-      title: Text(
-        "Partida $partidaNumber",
-        style: TextStyle(
-          color: Colors.white,
-        ),
-      ),
-      subtitle: Text(
-        "Descrição da partida $partidaNumber",
-        style: TextStyle(
-          color: Colors.white,
-        ),
-      ),
-      trailing: ElevatedButton(
-        onPressed: () {
-          // Adicionar ação para "Entrar" na partida
-        },
-        child: Text("Entrar"),
-      ),
-      onTap: () {
-        // Adicionar ação ao toque no item, se necessário
-      },
-    );
-  }
-}
 
 class Pagina2Page extends StatefulWidget {
   const Pagina2Page({Key? key}) : super(key: key);
@@ -52,64 +13,43 @@ class Pagina2Page extends StatefulWidget {
 
 class _Pagina2PageState extends State<Pagina2Page> {
   String selectedSport = 'Futebol';
+  PartidaService partidaService = PartidaService(); // Crie uma instância do serviço
+
+  List<Partida> partidas = []; // Lista para armazenar as partidas
+
+  @override
+  void initState() {
+    super.initState();
+    loadPartidas(); // Carregue as partidas quando a tela for iniciada
+  }
+
+ Future<void> loadPartidas() async {
+  try {
+    final List<Partida> partidas = await partidaService.getAllPartidas()as List<Partida>; 
+    if (partidas != null) {
+      setState(() {
+        this.partidas = partidas;
+      });
+    } else {
+      // Lide com o caso em que a resposta do servidor não é uma lista de objetos Partida
+      print("A resposta do servidor não é uma lista de objetos Partida.");
+    }
+  } catch (e) {
+    // Lidar com erros aqui, por exemplo, exibir uma mensagem de erro
+    print("Erro ao carregar as partidas: $e");
+  }
+}
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: <Widget>[
         Container(
-          color: Color.fromARGB(68, 56, 25, 100),
-          alignment: Alignment.center,
-          child: Text(
-            "Buscar partida",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          // ... (código anterior)
         ),
         SizedBox(height: 16.0),
         Container(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Text(
-                "Qual esporte?",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 8.0),
-              DropdownButton<String>(
-                value: selectedSport,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedSport = newValue!;
-                  });
-                },
-                items: <String>[
-                  'Futebol',
-                  'Vôlei',
-                  'Basquete',
-                  'Futevôlei',
-                  'Tênis',
-                ].map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        color: selectedSport == value ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+          // ... (código anterior)
         ),
         SizedBox(height: 16.0),
         Container(
@@ -124,12 +64,48 @@ class _Pagina2PageState extends State<Pagina2Page> {
                   color: Colors.white,
                 ),
               ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: 5, // Número de partidas possíveis
-                itemBuilder: (context, index) {
-                  return PartidaItemWidget(partidaNumber: index + 1);
+             ListView.builder(
+  shrinkWrap: true,
+  physics: NeverScrollableScrollPhysics(),
+  itemCount: partidas.length,
+  itemBuilder: (context, index) {
+    final partida = partidas[index];
+    return ListTile(
+      isThreeLine: true,
+      leading: Container(
+        width: 64.0,
+        height: 64.0,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.blue,
+        ),
+      ),
+      title: Text("Partida ${partida.id}",style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),), // Use o campo correto da classe Partida
+      subtitle: Text("Descrição da partida ${partida.id}",style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),), // Use o campo correto da classe Partida
+      trailing: ElevatedButton(
+        onPressed: () {
+                      Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetalhePartida(partida: partida),
+                    ),
+                  );
+        },
+        child: Text("Entrar"),
+                    ),
+                    onTap: () {
+                      
+                      
+                    },
+                  );
                 },
               ),
             ],
