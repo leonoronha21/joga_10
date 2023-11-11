@@ -10,7 +10,7 @@ class PartidaPage extends StatefulWidget {
   final String selectedTime;
   final String selectedSport;
 
-  PartidaPage({
+  PartidaPage( {
     required this.equipe1Members,
     required this.equipe2Members,
     required this.selectedLocation,
