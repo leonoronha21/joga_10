@@ -1,3 +1,5 @@
+import 'package:joga_10/model/PartidaMembro.dart';
+
 class Partida {
   final int id;
   final int idEstabelecimento;
@@ -6,7 +8,8 @@ class Partida {
   final String duracao;
   final String dataHora; // Alterado para dynamic
   final String status;
-  final String preco;
+  final double preco;
+  final List<PartidaMembro> membros;
 
   Partida({
     required this.id,
@@ -17,10 +20,16 @@ class Partida {
     required this.dataHora,
     required this.status,
     required this.preco,
+    required this.membros,
   });
 
   factory Partida.fromJson(Map<String, dynamic> json) {
+    
+    List<PartidaMembro> membros = List<PartidaMembro>.from(
+      json['membros'].map((membro) => PartidaMembro.fromJson(membro)),
+    );
     return Partida(
+    
       id: json['id'] as int,
       idEstabelecimento: json['id_estabelecimento'] as int,
       idQuadra: json['id_quadra'] as int,
@@ -28,7 +37,8 @@ class Partida {
       duracao: json['duracao'] as String,
       dataHora: json['data_hora'] as String,
       status: json['status'] as String,
-      preco: json['preco'] as String,
+      preco: json['preco'] as double,
+      membros: membros,
     );
   }
 }

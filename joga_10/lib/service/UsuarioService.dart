@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/model/Usuario.dart';
 
 class UsuarioService {
 
@@ -55,5 +56,23 @@ class UsuarioService {
         
         return response;
     }
+     Future<List<Usuario>> listarUsers() async {
+    var uri = Uri.parse("http://192.168.10.104:8080/lista-usuarios");
+
+    var response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      // Decodifique a resposta JSON para uma lista de mapas.
+      List<dynamic> jsonResponse = json.decode(response.body);
+
+      // Converta cada mapa em uma instância de Usuario usando o método fromJson.
+      List<Usuario> usuarios = jsonResponse.map((userMap) => Usuario.fromJson(userMap)).toList();
+
+      return usuarios;
+    } else {
+      // Se a requisição falhar, lança uma exceção.
+      throw Exception('Falha ao carregar a lista de usuários');
+    }
+  }
 
 }

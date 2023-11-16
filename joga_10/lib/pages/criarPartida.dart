@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:joga_10/model/PartidaMembro.dart';
+import 'package:joga_10/model/PartidaData.dart';
+import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
-
 import 'package:joga_10/service/PartidaService.dart';
+import 'package:joga_10/service/usuarioService.dart';
 
 class CriarPartidaPage extends StatefulWidget {
   final String estabelecimento;
@@ -24,8 +25,9 @@ class CriarPartidaPage extends StatefulWidget {
 
 class _CriarPartidaPageState extends State<CriarPartidaPage> {
   String selectedSport = 'Futebol';
-  List<String> equipe1Members = ['Membro1Equipe1'];
-  List<String> equipe2Members = ['Membro1Equipe2'];
+  List<String> equipe1Members = [];
+  List<String> equipe2Members = [];
+  List<int> selectedUserIds = [];
   bool isSingleTeam = false;
   bool isLocationAndTimeSelected = false;
 
@@ -40,53 +42,107 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
       isLocationAndTimeSelected = false;
     }
 
+    Map<String, dynamic> buildPartidaData() {
+  return {
+    "partidas": {
+      "id_estabelecimento": 1,
+      "id_quadra": 1,
+      "user_id": 1,
+      "duracao": "1",
+      "data_hora": "2023-11-04 " + widget.selectedTime + ":00",
+      "status": "0",
+      "preco": 120.0,
+    },
+    "time1Members": equipe1Members.map((member) {
+      var memberId = int.parse(member.split(' ')[0]);
+      return {
+        "id_user": memberId,
+        "equipe": "Equipe 1",
+        "nome": member.split(' ')[1],
+      };
+    }).toList(),
+    "time2Members": equipe2Members.map((member) {
+      var memberId = int.parse(member.split(' ')[0]);
+      return {
+        "id_user": memberId,
+        "equipe": "Equipe 2",
+        "nome": member.split(' ')[1],
+      };
+    }).toList(),
+  };
+}
+PartidaData buildPartidaDataAsObject() {
+  final Map<String, dynamic> partidaDataMap = buildPartidaData();
+
+  return PartidaData(
+    idEstabelecimento: partidaDataMap['partidas']['id_estabelecimento'],
+    idQuadra: partidaDataMap['partidas']['id_quadra'],
+    userId: partidaDataMap['partidas']['user_id'],
+    duracao: partidaDataMap['partidas']['duracao'],
+    dataHora: partidaDataMap['partidas']['data_hora'],
+    status: partidaDataMap['partidas']['status'],
+    preco: partidaDataMap['partidas']['preco'],
+    time1Members: (partidaDataMap['time1Members'] as List<dynamic>)
+        .map((member) => {
+              'id_user': member['id_user'],
+              'equipe': member['equipe'],
+              'nome': member['nome'],
+            })
+        .toList(),
+    time2Members: (partidaDataMap['time2Members'] as List<dynamic>)
+        .map((member) => {
+              'id_user': member['id_user'],
+              'equipe': member['equipe'],
+              'nome': member['nome'],
+            })
+        .toList(),
+  );
+}
+
     ElevatedButton createButton() {
       if (isLocationAndTimeSelected) {
         return ElevatedButton(
-          onPressed: () async {
-            final response = await PartidaService().SavePartida(
-              7, // Substitua por um valor apropriado
-              1, // Substitua por um valor apropriado
-              1, // Substitua por um valor apropriado
-              "1", // Substitua por um valor apropriado
-              "2023-11-04 " + widget.selectedTime + ":00",
-              "0", // Status está definido como "0" no seu exemplo
-              "120", // Substitua por um valor apropriado
-             
-            );
+        onPressed: () async {
+  try {
+    final partidaData = buildPartidaDataAsObject();
+   
+    final response = await PartidaService().SavePartida(partidaData);
 
-            if (response.statusCode == 200) {
-              final snackBar = SnackBar(
-                content: Text('Partida criada com sucesso!'),
-                duration: Duration(seconds: 3),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    if (response.statusCode == 200) {
+      final snackBar = SnackBar(
+        content: Text('Partida criada com sucesso!'),
+        duration: Duration(seconds: 3),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
 
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PartidaPage(
-                    equipe1Members: equipe1Members,
-                    equipe2Members: equipe2Members,
-                    selectedLocation: widget.selectedLocation,
-                    selectedTime: widget.selectedTime,
-                    selectedSport: selectedSport,
-                    estabelecimento: widget.estabelecimento,
-                    price: widget.price,
-                  ),
-                ),
-              );
-            } else {
-              print("Erro ao criar a partida: ${response.body}");
-            }
-          },
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PartidaPage(
+            equipe1Members: equipe1Members,
+            equipe2Members: equipe2Members,
+            selectedLocation: widget.selectedLocation,
+            selectedTime: widget.selectedTime,
+            selectedSport: selectedSport,
+            estabelecimento: widget.estabelecimento,
+            price: widget.price,
+          ),
+        ),
+      );
+    } else {
+      print("Erro ao criar a partida: ${response.body}");
+    }
+  } catch (e) {
+    print("Erro durante a criação da partida: $e");
+  }
+},
           child: Text("Finalizar"),
         );
       } else {
         return ElevatedButton(
           onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
+            Navigator.push(
+                context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
           },
           child: Text("Selecionar Local"),
         );
@@ -219,12 +275,9 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                 SizedBox(height: 20.0),
                 ElevatedButton(
                   onPressed: () {
-                    if (equipe1Members.length < 10) {
-                      equipe1Members.add("Novo Membro Equipe 1");
-                    }
-                    setState(() {});
+                    _showUserSearchModal(context, equipe1Members);
                   },
-                  child: Text("Adicionar na Equipe 1"),
+                  child: Text("Buscar usuário - Equipe 1"),
                 ),
               ],
             ),
@@ -281,12 +334,9 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
               SizedBox(height: 20.0),
               ElevatedButton(
                 onPressed: () {
-                  if (equipe2Members.length < 10) {
-                    equipe2Members.add("Novo Membro Equipe 2");
-                  }
-                  setState(() {});
+                  _showUserSearchModal(context, equipe2Members);
                 },
-                child: Text("Adicionar na Equipe 2"),
+                child: Text("Buscar usuário - Equipe 2"),
               ),
             ],
           ),
@@ -295,5 +345,55 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
         ],
       ),
     );
+  }
+
+  void _showUserSearchModal(BuildContext context, List<String> membersList) async {
+    List<Usuario> usuarios = await UsuarioService().listarUsers();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Buscar usuários',
+                ),
+              ),
+              SizedBox(height: 10.0),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: usuarios.length,
+                  itemBuilder: (context, index) {
+                    Usuario usuario = usuarios[index];
+                    return ListTile(
+                      title: Text('${usuario.primeiroNome} ${usuario.segundoNome}'),
+                      onTap: () {
+                        setState(() {
+                          selectedUserIds.add(usuario.id);
+                        });
+                        _addUserToTeam(
+                          membersList,
+                          '${usuario.id} ${usuario.primeiroNome} ${usuario.segundoNome} ',
+                        );
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _addUserToTeam(List<String> teamMembers, String userName) {
+    setState(() {
+      teamMembers.add(userName);
+    });
   }
 }
