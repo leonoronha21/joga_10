@@ -10,7 +10,7 @@ class PartidaPage extends StatefulWidget {
   final String selectedTime;
   final String selectedSport;
 
-  PartidaPage( {
+  PartidaPage({
     required this.equipe1Members,
     required this.equipe2Members,
     required this.selectedLocation,
@@ -41,7 +41,7 @@ class _PartidaPageState extends State<PartidaPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 Text("Estabelecimento: ${widget.estabelecimento}", style: TextStyle(color: Colors.white)),
+                Text("Estabelecimento: ${widget.estabelecimento}", style: TextStyle(color: Colors.white)),
                 Text("Preco: ${widget.price}", style: TextStyle(color: Colors.white)),
                 Text("Esporte: ${widget.selectedSport}", style: TextStyle(color: Colors.white)),
                 Text("Quadra: ${widget.selectedLocation}", style: TextStyle(color: Colors.white)),
@@ -55,9 +55,8 @@ class _PartidaPageState extends State<PartidaPage> {
                           child: ListTile(
                             title: Row(
                               children: [
-                                Text(member,style: TextStyle(color: Colors.white)),
-                                Spacer(),
-                                StarRating(), // Aqui você define a avaliação do membro
+                                Text(member, style: TextStyle(color: Colors.white)),
+                                Spacer(), // Aqui você define a avaliação do membro
                               ],
                             ),
                           ),
@@ -70,13 +69,13 @@ class _PartidaPageState extends State<PartidaPage> {
                   children: widget.equipe2Members
                       .map(
                         (member) => Card(
-                         color: Color.fromARGB(68, 56, 25, 139),
+                          color: Color.fromARGB(68, 56, 25, 139),
                           child: ListTile(
                             title: Row(
                               children: [
-                                Text(member,style: TextStyle(color: Colors.white)),
+                                Text(member, style: TextStyle(color: Colors.white)),
                                 Spacer(),
-                                StarRating(), // Aqui você define a avaliação do membro
+                                // Aqui você define a avaliação do membro
                               ],
                             ),
                           ),
@@ -92,48 +91,29 @@ class _PartidaPageState extends State<PartidaPage> {
                   ),
                 ),
                 SizedBox(height: 20.0),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => MainPage())); // Voltar à Página Principal
-                    },
-                    child: Text("Voltar à Página Principal"),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => MainPage())); // Voltar à Página Principal
+                      },
+                      child: Text("Menu principal"),
+                    ),
+                    SizedBox(width: 20.0), // Adicione um espaço entre os botões
+                    ElevatedButton(
+                      onPressed: () {
+                        // Adicione a lógica para a tela de pagamento
+                      },
+                      child: Text("Pagamento"),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class StarRating extends StatefulWidget {
-  @override
-  _StarRatingState createState() => _StarRatingState();
-}
-
-class _StarRatingState extends State<StarRating> {
-  int userRating = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(5, (index) {
-        final starNumber = index + 1;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              userRating = starNumber;
-            });
-          },
-          child: Icon(
-            userRating >= starNumber ? Icons.star : Icons.star_border,
-            color: Colors.yellow,
-          ),
-        );
-      }),
     );
   }
 }

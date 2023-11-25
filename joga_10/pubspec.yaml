@@ -39,6 +39,7 @@ dependencies:
   google_fonts: ^5.1.0
   date_field: ^3.0.5
   flutter_masked_text2: ^0.9.1
+  shared_preferences: ^2.0.12
 
 dev_dependencies:
   flutter_test:

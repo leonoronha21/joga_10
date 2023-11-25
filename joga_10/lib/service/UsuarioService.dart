@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:joga_10/model/Usuario.dart';
 
+
 class UsuarioService {
 
   Future<http.Response> SaveUsuario(String primeiro_nome, String  segundo_nome, String email, String password, String cidade, 
@@ -74,5 +75,22 @@ class UsuarioService {
       throw Exception('Falha ao carregar a lista de usuários');
     }
   }
+Future<Map<String, dynamic>> decodeToken(String token) async {
+  try {
+    List<String> parts = token.split('.');
+    String payload = parts[1];
+
+    // Adicionar o padding manualmente se necessário
+    payload = payload.padRight((payload.length + 3) ~/ 4 * 4, '=');
+
+    String decodedPayload = utf8.decode(base64.decode(payload));
+    Map<String, dynamic> decodedToken = json.decode(decodedPayload);
+    return decodedToken;
+  } catch (e) {
+    print('Erro ao decodificar o token: $e');
+    rethrow; // Rethrow a exceção para que ela possa ser capturada onde a função foi chamada
+  }
+}
+
 
 }

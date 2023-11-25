@@ -6,6 +6,8 @@ import 'package:joga_10/pages/esqueciSenha.dart';
 import 'package:joga_10/pages/main_page.dart';
 import 'package:joga_10/pages/parceiro.dart';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/service/UsuarioService.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /*
 class LoginPage extends StatefulWidget {
@@ -234,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                   alignment: Alignment.center,
                   child: TextButton(
                     onPressed: () {
-                      // Navegue para a página "criarUsuario.dart" quando o botão "Criar Conta" for pressionado
+                     
                       Navigator.push(context, MaterialPageRoute(builder: (context) => RegistrationPage()));
                     },
                     style: ButtonStyle(
@@ -296,8 +298,9 @@ class _LoginPageState extends State<LoginPage> {
   }
   
   Future<void> login() async {
-    final url = Uri.parse('http://192.168.10.104:8080/login'); // Substitua pela URL correta do seu endpoint de login no Spring Boot.
+  final url = Uri.parse('http://192.168.10.104:8080/login'); 
 
+  try {
     final response = await http.post(
       url,
       headers: {
@@ -310,23 +313,31 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (response.statusCode == 200) {
-      // Login bem-sucedido
+      final Map<String, dynamic> data = json.decode(response.body);
+      String token = data['token'];
+      print('Token recebido: $token');
+      
+      UsuarioService usuarioService = UsuarioService();
+      Map<String, dynamic> decodedToken = await usuarioService.decodeToken(token);
+      
+      // Agora você pode usar as informações do token decodificado
+    
+      print('Informações do usuário: ${decodedToken.toString()}');
+
       Navigator.pushReplacement(
-        
         context,
         MaterialPageRoute(
           builder: (context) => MainPage(),
         ),
       );
-      
     } else {
-      // Login falhou
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Erro ao efetuar o login"),
-        ),
-      );
+      // Lidar com o erro de autenticação, se necessário.
+      print('Erro de autenticação: ${response.body}');
     }
+  } catch (e) {
+    // Lidar com exceções aqui, por exemplo, exibir uma mensagem de erro.
+    print('Erro durante o login: $e');
   }
+}
 
 }

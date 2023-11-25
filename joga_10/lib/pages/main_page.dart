@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/login_page.dart';
 import 'package:joga_10/pages/pagina1.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dados_cadastrais.dart';
 import 'pagina2.dart';
 import 'pagina3.dart';
@@ -30,6 +30,7 @@ class _MainPageState extends State<MainPage> {
             ),
             centerTitle: true, // Centraliza a imagem no AppBar
           ),
+          
         drawer: Drawer(
         
           child: Column(
@@ -39,7 +40,7 @@ class _MainPageState extends State<MainPage> {
                       UserAccountsDrawerHeader( 
                                                                     
                       accountName: Text("Nome do Usuário"), // Nome do usuário
-                      accountEmail: Text("email@example.com"),
+                       accountEmail: Text("email@example.com"),
                       decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
                                 color: Color.fromARGB(255, 0, 10,80), // Cor de fundo do quadrado
@@ -73,6 +74,7 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
               ListTile(
+                
                 title: Text("Dados pessoais"),
                 onTap: () {
                   Navigator.push(
@@ -148,3 +150,5 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
+
+

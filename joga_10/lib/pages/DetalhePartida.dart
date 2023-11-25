@@ -59,50 +59,87 @@ class DetalhePartida extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     )),
-                Column(
-                  children: equipe1
-                      .map(
-                        (membro) => Card(
-                          color: Color.fromARGB(68, 56, 25, 139),
-                          child: ListTile(
-                            title: Row(
-                              children: [
-                                Text(membro.nome,
-                                    style: TextStyle(color: Colors.white)),
-                                Spacer(),
-                                StarRating(), // Aqui você define a avaliação do membro
-                              ],
+               Column(
+                    children: equipe1
+                        .map(
+                          (membro) => Card(
+                            color: Color.fromARGB(68, 56, 25, 139),
+                            child: ListTile(
+                              title: Row(
+                                children: [
+                                  Text(membro.nome, style: TextStyle(color: Colors.white)),
+                                  Spacer(),
+                                  IconButton(
+                                    icon: Icon(Icons.person_add, color: Colors.blue), // Adiciona esta linha
+                                    onPressed: () {
+                                      // Lógica para adicionar como amigo
+                                      // Implemente a ação desejada
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.star, color: Colors.yellow), // Adiciona esta linha
+                                    onPressed: () {
+                                      // Lógica para avaliar
+                                      // Implemente a ação desejada
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.report, color: Colors.red), // Adiciona esta linha
+                                    onPressed: () {
+                                      // Lógica para denunciar
+                                      // Implemente a ação desejada
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                        )
+                        .toList(),
+                  ),
                 Text("Membros da Equipe 2:\n",
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     )),
-                Column(
-                  children: equipe2
-                      .map(
-                        (membro) => Card(
-                          color: Color.fromARGB(68, 56, 25, 139),
-                          child: ListTile(
-                            title: Row(
-                              children: [
-                                Text(membro.nome,
-                                    style: TextStyle(color: Colors.white)),
-                                Spacer(),
-                                StarRating(), // Aqui você define a avaliação do membro
-                              ],
+               Column(
+                    children: equipe2
+                        .map(
+                          (membro) => Card(
+                            color: Color.fromARGB(68, 56, 25, 139),
+                            child: ListTile(
+                              title: Row(
+                                children: [
+                                  Text(membro.nome, style: TextStyle(color: Colors.white)),
+                                  Spacer(),
+                                  IconButton(
+                                    icon: Icon(Icons.person_add, color: Colors.blue), // Adiciona esta linha
+                                    onPressed: () {
+                                      // Lógica para adicionar como amigo
+                                      // Implemente a ação desejada
+                                    },
+                                  ),
+                                 IconButton(
+                                    icon: Icon(Icons.star, color: Colors.yellow),
+                                    onPressed: () {
+                               
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.report, color: Colors.red), // Adiciona esta linha
+                                    onPressed: () {
+                                      // Lógica para denunciar
+                                      // Implemente a ação desejada
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                        )
+                        .toList(),
+                  ),
                 Text("Comentários:", style: TextStyle(color: Colors.white)),
                 TextFormField(
                   decoration: InputDecoration(
@@ -116,9 +153,11 @@ class DetalhePartida extends StatelessWidget {
                     onPressed: () {
                       Navigator.pop(context); // Voltar à tela anterior
                     },
-                    child: Text("Voltar à Página Anterior"),
+                    child: Text("Entrar na partida"),
                   ),
                 ),
+              
+                
               ],
             ),
           ),
@@ -133,26 +172,67 @@ class StarRating extends StatefulWidget {
   _StarRatingState createState() => _StarRatingState();
 }
 
+
+
 class _StarRatingState extends State<StarRating> {
   int userRating = 0;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(5, (index) {
-        final starNumber = index + 1;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              userRating = starNumber;
-            });
-          },
-          child: Icon(
+    return GestureDetector(
+      onTap: () {
+        _mostrarDialogoAvaliacao(context);
+      },
+      child: Row(
+        children: List.generate(5, (index) {
+          final starNumber = index + 1;
+          return Icon(
             userRating >= starNumber ? Icons.star : Icons.star_border,
             color: Colors.yellow,
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
+_mostrarDialogoAvaliacao(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Avaliar Usuário"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Toque na estrela para avaliar:"),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starNumber = index + 1;
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop(starNumber);
+                    },
+                    child: Icon(
+                      userRating >= starNumber ? Icons.star : Icons.star_border,
+                      color: Colors.yellow,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((value) {
+      if (value != null) {
+        setState(() {
+          userRating = value;
+        });
+        // Aqui você pode adicionar a lógica para enviar a avaliação
+        // Implemente a ação desejada
+      }
+    });
+  }
+  
 }
