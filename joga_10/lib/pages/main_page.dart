@@ -7,8 +7,9 @@ import 'pagina2.dart';
 import 'pagina3.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
-
+  
+  final Map<String, dynamic> userData;
+  MainPage({required this.userData});
   @override
   State<MainPage> createState() => _MainPageState();
 }
@@ -39,8 +40,8 @@ class _MainPageState extends State<MainPage> {
                                
                       UserAccountsDrawerHeader( 
                                                                     
-                      accountName: Text("Nome do Usuário"), // Nome do usuário
-                       accountEmail: Text("email@example.com"),
+                      accountName: Text(widget.userData['nome']), // Nome do usuário
+                     accountEmail: Text(widget.userData['sub']), // Email do usuário
                       decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
                                 color: Color.fromARGB(255, 0, 10,80), // Cor de fundo do quadrado

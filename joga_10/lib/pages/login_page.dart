@@ -177,17 +177,17 @@ class _LoginPageState extends State<LoginPage> {
                     child: TextButton(
                       onPressed: () {
                        
-                          if (emailController.text.trim() == "admin" &&
+                        /*  if (emailController.text.trim() == "admin" &&
                             senhaController.text.trim() == "user") {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const MainPage(),
+                              builder: (context) => const MainPage(userData: decodedToken),
                             ),
                           );
-                        } else {
+                        } else {*/
                            login();
-                        }
+                        
                         }  // Chama o método login quando o botão é pressionado                       
      
                       ,
@@ -327,7 +327,7 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => MainPage(),
+          builder: (context) => MainPage(userData: decodedToken),
         ),
       );
     } else {
