@@ -11,12 +11,20 @@ class CriarPartidaPage extends StatefulWidget {
   final String price;
   final String selectedLocation;
   final String selectedTime;
+  final Map<String, dynamic> userData;
+
+  
+   
+ 
+
 
   CriarPartidaPage({
     required this.estabelecimento,
     required this.price,
     required this.selectedLocation,
     required this.selectedTime,
+   required this.userData
+    
   });
 
   @override
@@ -47,7 +55,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     "partidas": {
       "id_estabelecimento": 1,
       "id_quadra": 1,
-      "user_id": 1,
+      "user_id": widget.userData['id_user'],
       "duracao": "1",
       "data_hora": "2023-11-04 " + widget.selectedTime + ":00",
       "status": "0",
@@ -126,6 +134,7 @@ PartidaData buildPartidaDataAsObject() {
             selectedSport: selectedSport,
             estabelecimento: widget.estabelecimento,
             price: widget.price,
+            userData: widget.userData,
           ),
         ),
       );
@@ -142,7 +151,7 @@ PartidaData buildPartidaDataAsObject() {
         return ElevatedButton(
           onPressed: () {
             Navigator.push(
-                context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
+                context, MaterialPageRoute(builder: (context) => SelecionaLocalPage(userData: widget.userData)));
           },
           child: Text("Selecionar Local"),
         );
@@ -214,8 +223,8 @@ PartidaData buildPartidaDataAsObject() {
               });
             },
           ),
-          Text(
-            'Estabelecimento Selecionado: ${widget.estabelecimento}\nHorário Selecionado: ${widget.selectedTime}\nLocal Selecionado: ${widget.selectedLocation}\nPreço Selecionado: ${widget.price}\n\n\n',
+          Text('Dono da partida:${widget.userData['nome']} ${widget.userData['sobrenome']}'
+            '\nEstabelecimento: ${widget.estabelecimento}\nHorário Selecionado: ${widget.selectedTime}\nLocal Selecionado: ${widget.selectedLocation}\nPreço Selecionado: ${widget.price}\n\n\n',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,

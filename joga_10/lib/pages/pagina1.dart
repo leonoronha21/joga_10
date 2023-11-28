@@ -3,7 +3,9 @@ import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
 
 class Pagina1Page extends StatefulWidget {
-  const Pagina1Page({Key? key}) : super(key: key);
+  final Map<String, dynamic> userData;
+
+  Pagina1Page({Key? key, required this.userData}) : super(key: key);
 
   @override
   State<Pagina1Page> createState() => _Pagina1PageState();
@@ -25,14 +27,14 @@ class _Pagina1PageState extends State<Pagina1Page> {
                   ElevatedButton(
                     onPressed: () {
                       // ignore: prefer_const_constructors
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage(userData: widget.userData,)));
                     },
                     child: Text("Criar Partida"),
                   ),
                   SizedBox(width: 16.0), // Adiciona espaço entre os botões
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => PartidaPage(equipe1Members: [], equipe2Members: [], selectedLocation: '', selectedTime: '', selectedSport: '', estabelecimento: '', price: '',)));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => PartidaPage(equipe1Members: [], equipe2Members: [], selectedLocation: '', selectedTime: '', selectedSport: '', estabelecimento: '', price: '',userData: widget.userData,)));
                     },
                     child: Text("Acompanhar partida"),
                   ),

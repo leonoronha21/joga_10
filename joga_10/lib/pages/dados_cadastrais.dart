@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:joga_10/service/UsuarioService.dart';
 
 class DadosCadastraisPage extends StatefulWidget {
-  DadosCadastraisPage({Key? key}) : super(key: key);
+
+   final Map<String, dynamic> userData;
+
+  DadosCadastraisPage({Key? key, required this.userData}) : super(key: key);
+  
 
   @override
   State<DadosCadastraisPage> createState() => _DadosCadastraisPageState();
@@ -43,7 +47,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: primeiroNomeController,
                 decoration: InputDecoration(
-                  hintText: 'Informe seu nome',
+                  hintText: widget.userData['nome'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -58,7 +62,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: segundoNomeController,
                 decoration: InputDecoration(
-                  hintText: 'Sobrenome',
+                  hintText: widget.userData['sobrenome'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -73,7 +77,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: emailController,
                 decoration: InputDecoration(
-                  hintText: 'e-mail@gmail.com',
+                  hintText: widget.userData['sub'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),

@@ -5,7 +5,9 @@ import 'package:joga_10/service/PartidaService.dart';
 
 
 class Pagina2Page extends StatefulWidget {
-  const Pagina2Page({Key? key}) : super(key: key);
+  final Map<String, dynamic> userData;
+
+  Pagina2Page({Key? key, required this.userData}) : super(key: key);
 
   @override
   State<Pagina2Page> createState() => _Pagina2PageState();

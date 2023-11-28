@@ -40,7 +40,7 @@ class _MainPageState extends State<MainPage> {
                                
                       UserAccountsDrawerHeader( 
                                                                     
-                      accountName: Text(widget.userData['nome']), // Nome do usuário
+                      accountName: Text(widget.userData['nome']+' '+widget.userData['sobrenome']), // Nome do usuário
                      accountEmail: Text(widget.userData['sub']), // Email do usuário
                       decoration: BoxDecoration(
                       shape: BoxShape.rectangle,
@@ -51,7 +51,7 @@ class _MainPageState extends State<MainPage> {
                         backgroundImage: AssetImage("lib/assets/img/user_profile.jpg"),
                       ),
                     ),
-              Expanded(
+             /* Expanded(
                 
                 child: ListView(
                   
@@ -73,7 +73,7 @@ class _MainPageState extends State<MainPage> {
                     // Adicione mais amigos conforme necessário
                   ],
                 ),
-              ),
+              ),*/
               ListTile(
                 
                 title: Text("Dados pessoais"),
@@ -81,7 +81,7 @@ class _MainPageState extends State<MainPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DadosCadastraisPage(),
+                      builder: (context) => DadosCadastraisPage(userData: widget.userData),
                     ),
                   );
                 },
@@ -118,10 +118,10 @@ class _MainPageState extends State<MainPage> {
                     posicaoPagina = value;
                   });
                 },
-                children: const [
-                  Pagina1Page(),
-                  Pagina2Page(),
-                  Pagina3Page(),
+                children:  [
+                  Pagina1Page(userData: widget.userData),
+                  Pagina2Page(userData: widget.userData),
+                  Pagina3Page(userData: widget.userData),
                 ],
               ),
             ),

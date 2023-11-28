@@ -9,6 +9,7 @@ class PartidaPage extends StatefulWidget {
   final String price;
   final String selectedTime;
   final String selectedSport;
+    final Map<String, dynamic> userData;
 
   PartidaPage({
     required this.equipe1Members,
@@ -18,6 +19,7 @@ class PartidaPage extends StatefulWidget {
     required this.price,
     required this.selectedTime,
     required this.selectedSport,
+    required this.userData
   });
 
   @override
@@ -41,6 +43,7 @@ class _PartidaPageState extends State<PartidaPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text("Dono da partida: ${widget.userData['nome']}${widget.userData['sobrenome']}", style: TextStyle(color: Colors.white)),
                 Text("Estabelecimento: ${widget.estabelecimento}", style: TextStyle(color: Colors.white)),
                 Text("Preco: ${widget.price}", style: TextStyle(color: Colors.white)),
                 Text("Esporte: ${widget.selectedSport}", style: TextStyle(color: Colors.white)),
@@ -96,7 +99,7 @@ class _PartidaPageState extends State<PartidaPage> {
                   children: [
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => MainPage())); // Voltar à Página Principal
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => MainPage(userData: widget.userData,))); // Voltar à Página Principal
                       },
                       child: Text("Menu principal"),
                     ),
