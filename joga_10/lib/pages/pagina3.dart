@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/model/Cartao.dart';
+import 'package:joga_10/pages/cadastro_cartao.dart';
+import 'package:joga_10/service/CartaoService.dart';
 
 class Pagina3Page extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -10,162 +13,81 @@ class Pagina3Page extends StatefulWidget {
 }
 
 class _Pagina3PageState extends State<Pagina3Page> {
-  final TextEditingController gastosController = TextEditingController();
-  final TextEditingController nomeController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
 
-  int totalPartidas = 0;
+  // Lista de cartões cadastrados
+  List<Cartao> cartoesCadastrados = [];
+
+  // Serviço para obter cartões
+  final CartaoService cartaoService = CartaoService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Carregar a lista de cartões ao inicializar a tela
+    carregarCartoes();
+  }
+
+Future<void> carregarCartoes() async {
+  try {
+    // Converta idUser para String antes de passá-lo
+    
+
+    List<Cartao> cartoes = await cartaoService.getCartaoUser(widget.userData['id_user']);
+    setState(() {
+      cartoesCadastrados = cartoes;
+    });
+  } catch (e) {
+    print("Erro ao carregar os cartões: $e");
+    // Adicione a lógica necessária para lidar com erros, como exibir uma mensagem de erro ao usuário.
+  }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
-        backgroundColor: Color.fromARGB(68, 56, 25, 100),
+      backgroundColor: Color.fromARGB(68, 56, 25, 100),
       body: ListView(
-          
         children: <Widget>[
-          Container(
-           color: Color.fromARGB(68, 56, 25, 100),
-            alignment: Alignment.center,
-            child:
-             Text(
-              "Dados de pagamento",
-              style: TextStyle(
-                
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
           SizedBox(height: 16.0),
           Container(
-            
             padding: EdgeInsets.all(16.0),
+            color: Color.fromARGB(68, 56, 25, 100),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  "Nome",
+                  "Cartões",
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                  ),
-                ),
-                TextFormField(
-                  controller: nomeController,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Titular do cartão',
-                    hintStyle: TextStyle(color: Colors.white),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
                   ),
                 ),
                 SizedBox(height: 16.0),
-                Text(
-                  "CPF",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '000.000.000-00',
-                    hintStyle: TextStyle(color: Colors.white),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16.0),
-                Text(
-                  "Codigo de Segurança",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                TextFormField(
-                  controller: gastosController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '000',
-                    hintStyle: TextStyle(color: Colors.white),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 16.0),
-                Text(
-                  "Número do cartão",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                TextFormField(
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '4365 0000 0000 0000',
-                    hintStyle: TextStyle(color: Colors.white),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      totalPartidas = int.tryParse(value) ?? 0;
-                    });
+                // Lista de cartões
+                ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: cartoesCadastrados.length-1,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(
+                        'Nº:       '+cartoesCadastrados[index].numeroCartao,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
                   },
-                ),
-                SizedBox(height: 16.0),
-                Text(
-                  "Bandeira: $totalPartidas",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
                 ),
                 SizedBox(height: 16.0),
                 ElevatedButton(
                   onPressed: () {
-                    // Adicione aqui a lógica para salvar os dados
-                    print("Botão Salvar pressionado");
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CadastroCartaoPage(userData: widget.userData),
+                      ),
+                    );
                   },
-                  child: Text("Salvar"),
+                  child: Text("Adicionar Cartão"),
                 ),
               ],
             ),

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/model/Partida.dart';
+import 'package:joga_10/pages/DetalhePartida.dart';
 import 'package:joga_10/pages/partida.dart';
+import 'package:joga_10/pages/partidas.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
+import 'package:joga_10/service/PartidaService.dart';
 
 class Pagina1Page extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -12,6 +16,27 @@ class Pagina1Page extends StatefulWidget {
 }
 
 class _Pagina1PageState extends State<Pagina1Page> {
+  List<Partida> historicoPartidas = []; // Lista para armazenar o histórico de partidas
+
+  @override
+  void initState() {
+    super.initState();
+    // Carregar o histórico de partidas ao iniciar a página
+    carregarHistoricoPartidas();
+  }
+
+  Future<void> carregarHistoricoPartidas() async {
+    try {
+      PartidaService partidaService = PartidaService();
+      List<Partida> historico = await partidaService.getPartidasAtivas(widget.userData['id_user'].toString(), "1");
+      setState(() {
+        historicoPartidas = historico;
+      });
+    } catch (e) {
+      print("Erro ao carregar o histórico de partidas: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -26,45 +51,54 @@ class _Pagina1PageState extends State<Pagina1Page> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // ignore: prefer_const_constructors
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage(userData: widget.userData,)));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SelecionaLocalPage(userData: widget.userData)));
                     },
                     child: Text("Criar Partida"),
                   ),
-                  SizedBox(width: 16.0), // Adiciona espaço entre os botões
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => PartidaPage(equipe1Members: [], equipe2Members: [], selectedLocation: '', selectedTime: '', selectedSport: '', estabelecimento: '', price: '',userData: widget.userData,)));
-                    },
-                    child: Text("Acompanhar partida"),
-                  ),
+                  SizedBox(width: 16.0),
+                ElevatedButton(
+  onPressed: () async {
+    PartidaService p = new PartidaService();
+    List<Partida> partidas = await p.getPartidasAtivas(widget.userData['id_user'].toString(), "0");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PartidasPage(
+         
+          userData: widget.userData, partidas: partidas,
+        
+        ),
+      ),
+    );
+  },
+  child: Text("Partidas"),
+),
                 ],
               ),
             ],
           ),
         ),
         Container(
-           color: Color.fromARGB(68, 56, 25, 100),
+          color: Color.fromARGB(68, 56, 25, 100),
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
               Text(
-                "Historico de partidas",
+                "Histórico de partidas",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              // Widget de lista de partidas existentes (semelhante a lista de restaurantes)
               ListView.builder(
                 shrinkWrap: true,
                 physics: NeverScrollableScrollPhysics(),
-                itemCount: 5, // Número de itens na lista de partidas existentes
+                itemCount: historicoPartidas.length,
                 itemBuilder: (context, index) {
-                  // Crie um widget de item da lista aqui
                   return PartidaItemWidget(
-                    partidaNumber: index,
+                    partida: historicoPartidas[index],
                   );
                 },
               ),
@@ -77,42 +111,38 @@ class _Pagina1PageState extends State<Pagina1Page> {
 }
 
 class PartidaItemWidget extends StatelessWidget {
-  final int partidaNumber;
+  final Partida partida;
 
-  PartidaItemWidget({required this.partidaNumber});
+  PartidaItemWidget({required this.partida});
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      isThreeLine: true, // Define como três linhas (alinhando a imagem à esquerda)
+      isThreeLine: true,
       leading: Container(
-        width: 64.0,
-        height: 64.0,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.blue, // Cor da imagem de exemplo
+        child: Image.network(
+          'https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg',
+          width: 70,
+          height: 70,
         ),
       ),
       title: Text(
-        "Partida $partidaNumber",
+        "Partida ${partida.id}",
         style: TextStyle(
           color: Colors.white,
         ),
       ),
       subtitle: Text(
-        "Data da partida $partidaNumber",
+        "Data da partida: ${partida.dataHora}",
         style: TextStyle(
           color: Colors.white,
         ),
       ),
-      trailing: ElevatedButton(
-        onPressed: () {
-          // Adicionar ação para "Entrar" na partida
-        },
-        child: Text("Visualizar"),
-      ),
       onTap: () {
-        // Adicionar ação ao toque no item, se necessário
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DetalhePartida(partida: partida)),
+        );
       },
     );
   }

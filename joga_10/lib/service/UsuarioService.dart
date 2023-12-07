@@ -22,7 +22,8 @@ class UsuarioService {
        'contato': '$contato',
        'bairro': '$bairro',
        'rua': '$rua',
-       'complemento': '$complemento'
+       'complemento': '$complemento',
+        'role': 'user'
     };
     var body = json.encode(data);
     var response = await http.post(uri, headers: headers, body: body);
@@ -47,7 +48,8 @@ class UsuarioService {
        'contato': '$contato',
        'bairro': '$bairro',
        'rua': '$rua',
-       'complemento': '$complemento'
+       'complemento': '$complemento',
+       
     };
   
         var body = json.encode(data);

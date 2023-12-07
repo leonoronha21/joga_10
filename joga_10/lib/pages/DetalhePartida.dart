@@ -4,6 +4,7 @@ import 'package:joga_10/model/PartidaMembro.dart';
 
 class DetalhePartida extends StatelessWidget {
   final Partida partida;
+   
 
   DetalhePartida({required this.partida});
 

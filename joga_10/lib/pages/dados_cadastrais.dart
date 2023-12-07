@@ -92,7 +92,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: cidadeController,
                 decoration: InputDecoration(
-                  hintText: 'Sua cidade',
+                  hintText: widget.userData['cidade'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -107,7 +107,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: complementoController,
                 decoration: InputDecoration(
-                  hintText: 'Complemento',
+                  hintText:  widget.userData['complemento'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -122,7 +122,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: ruaController,
                 decoration: InputDecoration(
-                  hintText: 'Rua',
+                  hintText: widget.userData['rua'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -137,7 +137,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: bairroController,
                 decoration: InputDecoration(
-                  hintText: 'Bairro',
+                  hintText:  widget.userData['bairro'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
@@ -152,7 +152,7 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                 controller: contatoController,
                 decoration: InputDecoration(
-                  hintText: 'Contato',
+                  hintText: widget.userData['contato'],
                   hintStyle: TextStyle(color: Colors.white),
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: Colors.white),
