@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/model/Estabelecimentos.dart';
 
 class EstabelecimentoService {
 
@@ -33,6 +34,21 @@ class EstabelecimentoService {
     print("${response.body}");
 
     return response;
+  }
+   Future<List<Estabelecimentos>> getAllEstabelecimentos() async {
+    var uri = Uri.parse("http://192.168.10.104:8080/estabelecimentos");
+
+    var response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      Iterable list = json.decode(response.body);
+      List<Estabelecimentos> estabelecimentosList =
+          List<Estabelecimentos>.from(
+              list.map((e) => Estabelecimentos.fromJson(e)));
+      return estabelecimentosList;
+    } else {
+      throw Exception('Falha ao obter os estabelecimentos');
+    }
   }
 
 

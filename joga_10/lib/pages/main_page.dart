@@ -48,7 +48,7 @@ class _MainPageState extends State<MainPage> {
                         ), // Email do usuário
                       currentAccountPicture: CircleAvatar(
                         // Foto do usuário
-                        //backgroundImage: AssetImage("lib/assets/img/user_profile.jpg"),
+                        backgroundImage: AssetImage("lib/assets/img/volei.png"),
                       ),
                     ),
              /* Expanded(

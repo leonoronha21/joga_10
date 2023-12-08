@@ -72,6 +72,16 @@ flutter:
     - lib/assets/img/Joga_transparente.png
     - lib/assets/img/user_profile.jpg
     - lib/assets/img/campo.jpg
+    - lib/assets/img/futebol.png
+    - lib/assets/img/basquete.jpg
+    - lib/assets/img/cartao.png
+    - lib/assets/img/quadra-de-basquete.png
+    - lib/assets/img/quadra-de-tenis.png
+    - lib/assets/img/tenis.jpg
+    - lib/assets/img/volei.png
+    - lib/assets/img/voleibol.png
+    - lib/assets/img/cartao-de-credito.png
+
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

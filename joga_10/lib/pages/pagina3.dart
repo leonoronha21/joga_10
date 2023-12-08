@@ -13,7 +13,6 @@ class Pagina3Page extends StatefulWidget {
 }
 
 class _Pagina3PageState extends State<Pagina3Page> {
-
   // Lista de cartões cadastrados
   List<Cartao> cartoesCadastrados = [];
 
@@ -27,20 +26,19 @@ class _Pagina3PageState extends State<Pagina3Page> {
     carregarCartoes();
   }
 
-Future<void> carregarCartoes() async {
-  try {
-    // Converta idUser para String antes de passá-lo
-    
+  Future<void> carregarCartoes() async {
+    try {
+      List<Cartao> cartoes = await cartaoService.getListCartaoUser(widget.userData['id_user'].toString());
 
-    List<Cartao> cartoes = await cartaoService.getCartaoUser(widget.userData['id_user']);
-    setState(() {
-      cartoesCadastrados = cartoes;
-    });
-  } catch (e) {
-    print("Erro ao carregar os cartões: $e");
-    // Adicione a lógica necessária para lidar com erros, como exibir uma mensagem de erro ao usuário.
+      setState(() {
+        // Atualizar o estado com a lista de cartões
+        cartoesCadastrados = cartoes;
+      });
+    } catch (e) {
+      print("Erro ao carregar os cartões: $e");
+      // Adicione a lógica necessária para lidar com erros, como exibir uma mensagem de erro ao usuário.
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +53,12 @@ Future<void> carregarCartoes() async {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Image.asset(
+                  'lib/assets/img/cartao-de-credito.png',
+                  width: 100,
+                  height: 100,
+                ),
+                SizedBox(height: 16.0),
                 Text(
                   "Cartões",
                   style: TextStyle(
@@ -67,12 +71,23 @@ Future<void> carregarCartoes() async {
                 // Lista de cartões
                 ListView.builder(
                   shrinkWrap: true,
-                  itemCount: cartoesCadastrados.length-1,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: cartoesCadastrados.length,
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(
-                        'Nº:       '+cartoesCadastrados[index].numeroCartao,
-                        style: TextStyle(color: Colors.white),
+                    String ultimosDigitos = cartoesCadastrados[index].numeroCartao.length >= 4
+                      ? cartoesCadastrados[index].numeroCartao.substring(cartoesCadastrados[index].numeroCartao.length - 4)
+                      : cartoesCadastrados[index].numeroCartao;
+                    return GestureDetector(
+                      onTap: () {
+                        // Adicione a ação desejada ao tocar no cartão
+                        print("Cartão tocado: ${cartoesCadastrados[index].numeroCartao}");
+                        // Adicione aqui a navegação para outra página ou ação desejada
+                      },
+                      child: ListTile(
+                        title: Text(
+                          'Cartão: **** **** **** $ultimosDigitos',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     );
                   },

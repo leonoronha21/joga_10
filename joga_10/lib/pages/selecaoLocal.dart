@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/model/Quadras.dart';
+import 'package:joga_10/model/Estabelecimentos.dart';
 import 'package:joga_10/pages/criarPartida.dart';
+import 'package:joga_10/service/EstabelecimentoService.dart';
+import 'package:joga_10/service/QuadraService.dart';
 
-class SelecionaLocalPage extends StatelessWidget {
-    final Map<String, dynamic> userData;
+class SelecionaLocalPage extends StatefulWidget {
+  final Map<String, dynamic> userData;
 
   SelecionaLocalPage({Key? key, required this.userData}) : super(key: key);
+
+  @override
+  _SelecionaLocalPageState createState() => _SelecionaLocalPageState();
+}
+
+class _SelecionaLocalPageState extends State<SelecionaLocalPage> {
+  late Future<List<Estabelecimentos>> estabelecimentos;
+  late Future<List<Quadras>> quadras;
+
+  @override
+  void initState() {
+    super.initState();
+    estabelecimentos = EstabelecimentoService().getAllEstabelecimentos();
+    quadras = QuadraService().getAllQuadras();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,67 +36,74 @@ class SelecionaLocalPage extends StatelessWidget {
           style: TextStyle(color: Colors.white),
         ),
       ),
-      body: ListView(
-        children: <Widget>[
-          LocalItem(
-            nome: 'Local 1',
-            descricao: 'Descrição do Local 1',
-            endereco: 'Endereço do Local 1',
-            contato: 'Contato do Local 1',
-            cidade: 'Cidade do Local 1',
-            quantidadeQuadras: '2',
-            preco: 'R\$ 50/hora',
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra A',
-            precoQuadra: 'R\$ 50/hora',
-            nomeLocal: 'Local 1',
-            userData: userData,
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra B',
-            precoQuadra: 'R\$ 50/hora',
-            nomeLocal: 'Local 1',
-            userData: userData,
-          ),
-          LocalItem(
-            nome: 'Local 2',
-            descricao: 'Descrição do Local 2',
-            endereco: 'Endereço do Local 2',
-            contato: 'Contato do Local 2',
-            cidade: 'Cidade do Local 2',
-            quantidadeQuadras: '4',
-            preco: 'R\$ 60/hora',
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra X',
-            precoQuadra: 'R\$ 60/hora',
-            nomeLocal: 'Local 2',
-            userData: userData,
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra Y',
-            precoQuadra: 'R\$ 60/hora',
-            nomeLocal: 'Local 2',
-            userData: userData,
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra Z',
-            precoQuadra: 'R\$ 60/hora',
-            nomeLocal: 'Local 2',
-            userData: userData,
-          ),
-          QuadraItem(
-            nomeQuadra: 'Quadra W',
-            precoQuadra: 'R\$ 60/hora',
-            nomeLocal: 'Local 2',
-            userData: userData,
-          ),
-        ],
+      body: FutureBuilder(
+        future: Future.wait([estabelecimentos, quadras]),
+        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator();
+          } else if (snapshot.hasError) {
+            return Text('Erro: ${snapshot.error}');
+          } else {
+            try {
+              List<Estabelecimentos> estabelecimentosList = snapshot.data?[0] ?? [];
+              List<Quadras> quadrasList = snapshot.data?[1] ?? [];
+
+              return ListView.separated(
+                itemCount: estabelecimentosList.length,
+                separatorBuilder: (context, index) => Divider(),
+                itemBuilder: (context, index) {
+                  Estabelecimentos estabelecimento = estabelecimentosList[index];
+
+                 
+                  Widget localItem = LocalItem(
+                    nome: estabelecimento.nome,
+                    descricao: estabelecimento.razaoSocial,
+                    endereco:
+                        '${estabelecimento.rua}, ${estabelecimento.numero} - ${estabelecimento.bairro}, ${estabelecimento.cidade}',
+                    contato: estabelecimento.telefone,
+                    cidade: estabelecimento.cidade,
+                    quantidadeQuadras: quadrasList
+                        .where((quadra) =>
+                            quadra.idEstabelecimento ==
+                            estabelecimento.id)
+                        .length
+                        .toString(),
+                     // Substitua por uma propriedade real do estabelecimento se existir
+                  );
+
+                  // Agora, para cada estabelecimento, você pode listar as quadras correspondentes
+                  List<QuadraItem> quadrasWidgets = quadrasList
+                      .where((quadra) =>
+                          quadra.idEstabelecimento ==
+                          estabelecimento.id)
+                      .map((quadra) => QuadraItem(
+                            nomeQuadra: quadra.nome,
+                            precoQuadra: quadra.preco,
+                            nomeLocal: estabelecimento.nome,
+                            userData: widget.userData,
+                          ))
+                      .toList();
+
+                  // Adicione o LocalItem seguido das QuadraItems na árvore de widgets
+                  return Column(
+                    children: [
+                      localItem,
+                      ...quadrasWidgets,
+                    ],
+                  );
+                },
+              );
+            } catch (e) {
+              print('Erro durante a construção da interface: $e');
+              return Text('Erro durante a construção da interface: $e');
+            }
+          }
+        },
       ),
     );
   }
 }
+
 
 class LocalItem extends StatelessWidget {
   final String nome;
@@ -85,7 +112,7 @@ class LocalItem extends StatelessWidget {
   final String contato;
   final String cidade;
   final String quantidadeQuadras;
-  final String preco;
+
 
   LocalItem({
     required this.nome,
@@ -94,7 +121,7 @@ class LocalItem extends StatelessWidget {
     required this.contato,
     required this.cidade,
     required this.quantidadeQuadras,
-    required this.preco,
+ 
   });
 
   @override
@@ -102,29 +129,29 @@ class LocalItem extends StatelessWidget {
     return Column(
       children: <Widget>[
         ListTile(
-          title: Text(
+          title: Text('Nome: '+
             nome,
             style: TextStyle(color: Colors.white),
           ),
-          subtitle: Text(
+          subtitle: Text('Descricao: '+
             descricao,
             style: TextStyle(color: Colors.white),
           ),
         ),
         ListTile(
-          title: Text(
+          title: Text('Endereço: '+
             endereco,
             style: TextStyle(color: Colors.white),
           ),
         ),
         ListTile(
-          title: Text(
+          title: Text('Telefone: '+
             contato,
             style: TextStyle(color: Colors.white),
           ),
         ),
         ListTile(
-          title: Text(
+          title: Text('Cidade: '+
             cidade,
             style: TextStyle(color: Colors.white),
           ),
@@ -135,12 +162,7 @@ class LocalItem extends StatelessWidget {
             style: TextStyle(color: Colors.white),
           ),
         ),
-        ListTile(
-          title: Text(
-            'Preço: $preco',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
+        
         Divider(),
       ],
     );
@@ -178,11 +200,11 @@ class QuadraItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Image.network(
-        'https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg',
-        width: 80,
-        height: 80,
-      ),
+      leading:Image.asset(
+                          'lib/assets/img/futebol.png',
+                           width: 100,
+                           height: 200,
+                        ), 
       title: Text(
         nomeQuadra,
         style: TextStyle(color: Colors.white),

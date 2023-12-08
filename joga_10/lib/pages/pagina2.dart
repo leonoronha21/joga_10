@@ -14,14 +14,21 @@ class Pagina2Page extends StatefulWidget {
 
 class _Pagina2PageState extends State<Pagina2Page> {
   String selectedSport = 'Futebol';
-  PartidaService partidaService = PartidaService(); // Crie uma instância do serviço
+  PartidaService partidaService = PartidaService();
+  List<Partida> partidas = [];
 
-  List<Partida> partidas = []; // Lista para armazenar as partidas
+  Map<String, String> esporteIcones = {
+    'Futebol': 'lib/assets/img/futebol.png',
+    'Tênis': 'lib/assets/img/quadra-de-tenis.png',
+    'Basquete': 'lib/assets/img/quadra-de-basquete.png',
+    'Futevôlei': 'lib/assets/img/voleibol.png',
+    'Vôlei': 'lib/assets/img/voleibol.png',
+  };
 
   @override
   void initState() {
     super.initState();
-    loadPartidas(); // Carregue as partidas quando a tela for iniciada
+    loadPartidas();
   }
 
   Future<void> loadPartidas() async {
@@ -32,11 +39,9 @@ class _Pagina2PageState extends State<Pagina2Page> {
           this.partidas = partidas;
         });
       } else {
-        // Lide com o caso em que a resposta do servidor não é uma lista de objetos Partida
         print("A resposta do servidor não é uma lista de objetos Partida.");
       }
     } catch (e) {
-      // Lidar com erros aqui, por exemplo, exibir uma mensagem de erro
       print("Erro ao carregar as partidas: $e");
     }
   }
@@ -45,12 +50,41 @@ class _Pagina2PageState extends State<Pagina2Page> {
   Widget build(BuildContext context) {
     return ListView(
       children: <Widget>[
-        // ... (código anterior)
+        Container(
+          padding: EdgeInsets.all(16.0),
+          child: Image.asset(
+            esporteIcones[selectedSport] ?? '', // Usa o ícone correspondente ao esporte selecionado
+            width: 200,
+            height: 200,
+          ),
+        ),
         SizedBox(height: 16.0),
         Container(
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
+              DropdownButton<String>(
+                value: selectedSport,
+                items: <String>['Futebol', 'Tênis', 'Basquete', 'Futevôlei', 'Vôlei']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        color: value == selectedSport ? Colors.white : Colors.white,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedSport = newValue!;
+                  });
+                },
+                dropdownColor: Color.fromARGB(255, 0, 10, 80),
+              ),
+              SizedBox(height: 16.0),
               Text(
                 "Partidas Possíveis",
                 style: TextStyle(
@@ -68,11 +102,12 @@ class _Pagina2PageState extends State<Pagina2Page> {
                   return ListTile(
                     isThreeLine: true,
                     leading: Container(
-                        child: Image.network(
-                      'https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg',
-                      width: 70,
-                      height: 70,
-                    )),
+                      child: Image.asset(
+                        esporteIcones[selectedSport] ?? '', // Usa o ícone correspondente ao esporte selecionado
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
                     title: Text(
                       "Partida ${partida.id}",
                       style: TextStyle(
@@ -80,7 +115,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                    ), // Use o campo correto da classe Partida
+                    ),
                     subtitle: Text(
                       "Descrição da partida ${partida.id}",
                       style: TextStyle(
@@ -88,7 +123,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                    ), // Use o campo correto da classe Partida
+                    ),
                     onTap: () {
                       Navigator.push(
                         context,

@@ -5,6 +5,7 @@ import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
 import 'package:joga_10/service/PartidaService.dart';
 import 'package:joga_10/service/usuarioService.dart';
+import 'package:intl/intl.dart';
 
 class CriarPartidaPage extends StatefulWidget {
   final String estabelecimento;
@@ -51,13 +52,14 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     }
 
     Map<String, dynamic> buildPartidaData() {
+      String formattedTime = DateFormat('HH').format(DateTime.now());
   return {
     "partidas": {
-      "id_estabelecimento": 1,
+      "id_estabelecimento": 18,
       "id_quadra": 1,
       "user_id": widget.userData['id_user'],
       "duracao": "1",
-      "data_hora": "2023-11-04 " + widget.selectedTime + ":00",
+     "data_hora": "2023-12-10 " + formattedTime + ":00",
       "status": "0",
       "preco": 120.0,
     },

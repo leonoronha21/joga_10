@@ -40,4 +40,20 @@ class CartaoService {
     throw Exception('Falha ao obter os cartões do usuário');
   }
 }
+Future<List<Cartao>> getListCartaoUser(String idUser) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/listaCartoesUser?idUser=$idUser'),
+      headers: <String, String>{
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      Iterable list = json.decode(response.body);
+      List<Cartao> cartaoList = List<Cartao>.from(list.map((e) => Cartao.fromJson(e)));
+      return cartaoList;
+    } else {
+      throw Exception('Falha ao obter os cartões do usuário');
+    }
+  }
 }

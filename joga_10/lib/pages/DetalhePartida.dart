@@ -70,13 +70,7 @@ class DetalhePartida extends StatelessWidget {
                                 children: [
                                   Text(membro.nome, style: TextStyle(color: Colors.white)),
                                   Spacer(),
-                                  IconButton(
-                                    icon: Icon(Icons.person_add, color: Colors.blue), // Adiciona esta linha
-                                    onPressed: () {
-                                      // Lógica para adicionar como amigo
-                                      // Implemente a ação desejada
-                                    },
-                                  ),
+                                
                                   IconButton(
                                     icon: Icon(Icons.star, color: Colors.yellow), // Adiciona esta linha
                                     onPressed: () {
@@ -114,13 +108,7 @@ class DetalhePartida extends StatelessWidget {
                                 children: [
                                   Text(membro.nome, style: TextStyle(color: Colors.white)),
                                   Spacer(),
-                                  IconButton(
-                                    icon: Icon(Icons.person_add, color: Colors.blue), // Adiciona esta linha
-                                    onPressed: () {
-                                      // Lógica para adicionar como amigo
-                                      // Implemente a ação desejada
-                                    },
-                                  ),
+                                 
                                  IconButton(
                                     icon: Icon(Icons.star, color: Colors.yellow),
                                     onPressed: () {

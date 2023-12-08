@@ -120,11 +120,16 @@ class PartidaItemWidget extends StatelessWidget {
     return ListTile(
       isThreeLine: true,
       leading: Container(
-        child: Image.network(
-          'https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg',
-          width: 70,
-          height: 70,
-        ),
+        child: //Image.network(
+          //'https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg',
+         // width: 70,
+         // height: 70,
+      //  ),
+      Image.asset(
+                          'lib/assets/img/futebol.png',
+                           width: 100,
+                           height: 200,
+                        ), 
       ),
       title: Text(
         "Partida ${partida.id}",
