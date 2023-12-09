@@ -147,7 +147,7 @@ PartidaData buildPartidaDataAsObject() {
     print("Erro durante a criação da partida: $e");
   }
 },
-          child: Text("Finalizar"),
+          child: Text("Criar"),
         );
       } else {
         return ElevatedButton(
@@ -206,7 +206,7 @@ PartidaData buildPartidaDataAsObject() {
           ),
           SizedBox(height: 20.0),
           RadioListTile(
-            title: Text('Time Único (Sim)', style: TextStyle(color: Colors.white)),
+            title: Text('Time Único', style: TextStyle(color: Colors.white)),
             value: true,
             groupValue: isSingleTeam,
             onChanged: (bool? value) {
@@ -216,7 +216,7 @@ PartidaData buildPartidaDataAsObject() {
             },
           ),
           RadioListTile(
-            title: Text('Dois Times (Não)', style: TextStyle(color: Colors.white)),
+            title: Text('Dois Times', style: TextStyle(color: Colors.white)),
             value: false,
             groupValue: isSingleTeam,
             onChanged: (bool? value) {
@@ -255,14 +255,12 @@ PartidaData buildPartidaDataAsObject() {
                         member,
                         style: TextStyle(color: Colors.white),
                       ),
-                      leading: Container(
-                        width: 64.0,
-                        height: 64.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.blue,
-                        ),
-                      ),
+                            leading: CircleAvatar(
+
+  child: Image.asset(
+    'lib/assets/img/volei.png', // substitua pelo caminho correto do seu asset
+   // ajuste conforme necessário
+  ),),
                       trailing: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           primary: Colors.red,
@@ -314,13 +312,12 @@ PartidaData buildPartidaDataAsObject() {
                       member,
                       style: TextStyle(color: Colors.white),
                     ),
-                    leading: Container(
-                      width: 64.0,
-                      height: 64.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.blue,
-                      ),
+                    leading: CircleAvatar(
+
+  child: Image.asset(
+    'lib/assets/img/volei.png', // substitua pelo caminho correto do seu asset
+   // ajuste conforme necessário
+  ),
                     ),
                     trailing: ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -368,11 +365,11 @@ PartidaData buildPartidaDataAsObject() {
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
-              TextField(
+              /*TextField(
                 decoration: InputDecoration(
                   hintText: 'Buscar usuários',
                 ),
-              ),
+              ),*/
               SizedBox(height: 10.0),
               Expanded(
                 child: ListView.builder(

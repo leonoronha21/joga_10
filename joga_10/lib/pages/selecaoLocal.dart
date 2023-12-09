@@ -168,6 +168,21 @@ class LocalItem extends StatelessWidget {
     );
   }
 }
+String getIconPath(String quadraNome) {
+  if (quadraNome.toLowerCase().contains('basquete')) {
+    return 'lib/assets/img/quadra-de-basquete.png';
+  } else if (quadraNome.toLowerCase().contains('futebol')) {
+    return 'lib/assets/img/futebol.png';
+  } else if (quadraNome.toLowerCase().contains('volei')) {
+    return 'lib/assets/img/voleibol.png';
+  } else if (quadraNome.toLowerCase().contains('futevolei')) {
+    return 'lib/assets/img/voleibol.png';
+  } else if (quadraNome.toLowerCase().contains('tenis')) {
+    return 'lib/assets/img/tenis.png';
+  } else {
+    return 'lib/assets/img/futebol.png';
+  }
+}
 
 class QuadraItem extends StatelessWidget {
   final String nomeQuadra;
@@ -199,12 +214,14 @@ class QuadraItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String iconPath = getIconPath(nomeQuadra);
+
     return ListTile(
-      leading:Image.asset(
-                          'lib/assets/img/futebol.png',
-                           width: 100,
-                           height: 200,
-                        ), 
+      leading: Image.asset(
+        iconPath,
+        width: 100,
+        height: 200,
+      ),
       title: Text(
         nomeQuadra,
         style: TextStyle(color: Colors.white),

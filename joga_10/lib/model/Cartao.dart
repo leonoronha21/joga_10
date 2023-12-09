@@ -47,4 +47,13 @@ class Cartao {
       'validade': validade,
     };
   }
+   @override
+  String toString() {
+    // Mostrar apenas os 4 últimos dígitos
+    String ultimosDigitos = numeroCartao.length >= 4
+        ? '**** **** **** ' + numeroCartao.substring(numeroCartao.length - 4)
+        : numeroCartao;
+
+    return ultimosDigitos;
+  }
 }

@@ -24,7 +24,46 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
   var bairroController = TextEditingController();
   var contatoController = TextEditingController();
   
-  UsuarioService usuarioservice =  UsuarioService();
+  UsuarioService usuarioservice = UsuarioService();
+
+    Future<void> _showSuccessDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Atualizado com sucesso!'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fecha o modal
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Atribuir os valores iniciais aos controladores no initState
+    primeiroNomeController.text = widget.userData['nome'];
+    segundoNomeController.text = widget.userData['sobrenome'];
+    emailController.text = widget.userData['sub'];
+    cidadeController.text = widget.userData['cidade'];
+    complementoController.text = widget.userData['complemento'];
+    ruaController.text = widget.userData['rua'];
+    bairroController.text = widget.userData['bairro'];
+    contatoController.text = widget.userData['contato'];
+
+    
+  }
+  
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -159,22 +198,34 @@ class _DadosCadastraisPageState extends State<DadosCadastraisPage> {
                   ),
                 ),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  usuarioservice.updateUsuario(primeiroNomeController.text, 
-                segundoNomeController.text, emailController.text, 
-                cidadeController.text, cidadeController.text, bairroController.text, ruaController.text, 
-                contatoController.text, complementoController.text);
-                  print("Primeiro Nome: ${primeiroNomeController.text}");
-                  print("Segundo Nome: ${segundoNomeController.text}");
-                  print("Cidade: ${cidadeController.text}");
-                  print("Complemento: ${complementoController.text}");
-                  print("Rua: ${ruaController.text}");
-                  print("Bairro: ${bairroController.text}");
-                  print("Contato: ${contatoController.text}");
-                },
-                child: Text("Salvar"),
-              ),
+             ElevatedButton(
+  onPressed: () async {
+    await usuarioservice.updateUsuario(
+      primeiroNomeController.text,
+      segundoNomeController.text,
+      emailController.text,
+       contatoController.text,      
+        ruaController.text,
+         bairroController.text,
+         cidadeController.text,     
+        complementoController.text
+      
+    );
+
+    setState(() {
+      _showSuccessDialog();
+    });
+
+    print("Primeiro Nome: ${primeiroNomeController.text}");
+    print("Segundo Nome: ${segundoNomeController.text}");
+    print("Cidade: ${cidadeController.text}");
+    print("Complemento: ${complementoController.text}");
+    print("Rua: ${ruaController.text}");
+    print("Bairro: ${bairroController.text}");
+    print("Contato: ${contatoController.text}");
+  },
+  child: Text("Salvar"),
+),
             ],
           ),
         ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/model/Partida.dart';
+import 'package:joga_10/model/Quadras.dart';
 import 'package:joga_10/pages/DetalhePartida.dart';
 import 'package:joga_10/service/PartidaService.dart';
+import 'package:joga_10/service/QuadraService.dart';
+import 'package:collection/collection.dart';
 
 class Pagina2Page extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -15,7 +18,9 @@ class Pagina2Page extends StatefulWidget {
 class _Pagina2PageState extends State<Pagina2Page> {
   String selectedSport = 'Futebol';
   PartidaService partidaService = PartidaService();
+  QuadraService quadraService = QuadraService();
   List<Partida> partidas = [];
+  List<Quadras> quadras = [];
 
   Map<String, String> esporteIcones = {
     'Futebol': 'lib/assets/img/futebol.png',
@@ -24,6 +29,8 @@ class _Pagina2PageState extends State<Pagina2Page> {
     'Futevôlei': 'lib/assets/img/voleibol.png',
     'Vôlei': 'lib/assets/img/voleibol.png',
   };
+
+  Map<String, String> quadraIcones = {}; // Mapeamento para armazenar ícones por tipo de quadra
 
   @override
   void initState() {
@@ -34,15 +41,55 @@ class _Pagina2PageState extends State<Pagina2Page> {
   Future<void> loadPartidas() async {
     try {
       final List<Partida> partidas = await partidaService.getAllPartidas() as List<Partida>;
+
       if (partidas != null) {
         setState(() {
           this.partidas = partidas;
         });
+
+        // Chamada para getAllQuadras após obter as partidas
+        await getAllQuadras();
       } else {
         print("A resposta do servidor não é uma lista de objetos Partida.");
       }
     } catch (e) {
       print("Erro ao carregar as partidas: $e");
+    }
+  }
+
+  Future<void> getAllQuadras() async {
+    try {
+      final List<Quadras> quadras = await quadraService.getAllQuadras() as List<Quadras>;
+
+      if (quadras != null) {
+        // Preencher o mapeamento de ícones por tipo de quadra
+        quadraIcones = Map.fromIterable(
+          quadras,
+          key: (quadra) => quadra.tipoQuadra,
+          value: (quadra) => setIconePorTipoQuadra(quadra.tipoQuadra),
+        );
+      } else {
+        print("A resposta do servidor não é uma lista de objetos Quadra.");
+      }
+    } catch (e) {
+      print("Erro ao carregar as quadras: $e");
+    }
+  }
+
+  String setIconePorTipoQuadra(String tipoQuadra) {
+    switch (tipoQuadra) {
+      case 'Futebol':
+        return 'lib/assets/img/futebol.png';
+      case 'Tênis':
+        return 'lib/assets/img/quadra-de-tenis.png';
+      case 'Basquete':
+        return 'lib/assets/img/quadra-de-basquete.png';
+      case 'Futevôlei':
+        return 'lib/assets/img/voleibol.png';
+      case 'Vôlei':
+        return 'lib/assets/img/voleibol.png';
+      default:
+        return '';
     }
   }
 
@@ -53,7 +100,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
         Container(
           padding: EdgeInsets.all(16.0),
           child: Image.asset(
-            esporteIcones[selectedSport] ?? '', // Usa o ícone correspondente ao esporte selecionado
+            esporteIcones[selectedSport] ?? '',
             width: 200,
             height: 200,
           ),
@@ -99,15 +146,17 @@ class _Pagina2PageState extends State<Pagina2Page> {
                 itemCount: partidas.length,
                 itemBuilder: (context, index) {
                   final partida = partidas[index];
+                 String tipoQuadra = getTipoQuadraForPartida(partida, quadras);
+                  String iconeQuadra = quadraIcones[tipoQuadra] ?? '';
+
                   return ListTile(
                     isThreeLine: true,
-                    leading: Container(
-                      child: Image.asset(
-                        esporteIcones[selectedSport] ?? '', // Usa o ícone correspondente ao esporte selecionado
+                   /* leading: Container(
+                      child: Image.asset(                       iconeQuadra,
                         width: 100,
                         height: 100,
                       ),
-                    ),
+                    ),*/
                     title: Text(
                       "Partida ${partida.id}",
                       style: TextStyle(
@@ -117,7 +166,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
                       ),
                     ),
                     subtitle: Text(
-                      "Descrição da partida ${partida.id}",
+                      "Descrição da partida ${partida.idQuadra}",
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -141,4 +190,24 @@ class _Pagina2PageState extends State<Pagina2Page> {
       ],
     );
   }
+
+String getTipoQuadraForPartida(Partida partida, List<Quadras> quadras) {
+  try {
+    var idQuadra = partida.idQuadra;
+
+    // Utilize firstWhereOrNull do pacote collection
+    var quadraCorrespondente = quadras.firstWhereOrNull((quadra) => quadra.id == idQuadra);
+
+    if (quadraCorrespondente != null) {
+      var tipoQuadra = quadraCorrespondente.tipoQuadra;
+      return tipoQuadra;
+    } else {
+      print("Quadra não encontrada para o id ${idQuadra} da partida ${partida.id}");
+      return '';
+    }
+  } catch (e) {
+    print("Erro ao obter o tipo de quadra para a partida ${partida.id}: $e");
+    return '';
+  }
+}
 }

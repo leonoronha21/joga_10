@@ -221,13 +221,13 @@ class _LoginPageState extends State<LoginPage> {
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => EsqueciSenhaPage()));
                     },
-                    child: Text(
+                    /*child: Text(
                       "Esqueci minha senha",
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.w400,
                       ),
-                    ),
+                    ),*/
                   ),
                 ),
                 Container(

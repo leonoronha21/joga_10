@@ -87,7 +87,7 @@ class _MainPageState extends State<MainPage> {
                 },
               ),
               ListTile(
-                title: Text("Trocar Senha"),
+                //title: Text("Trocar Senha"),
                 onTap: () {
                   // Ação a ser executada quando "Configurações" é selecionado
                 },

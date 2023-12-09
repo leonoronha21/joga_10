@@ -36,7 +36,7 @@ final Map<String, dynamic> userData;
                 style: TextStyle(color: Colors.white),
               ),
               onTap: () {
-                // Navegue para a tela de detalhes da partida quando a partida for clicada
+               
                 Navigator.push(
                   context,
                   MaterialPageRoute(

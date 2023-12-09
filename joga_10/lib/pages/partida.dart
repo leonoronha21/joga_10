@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:joga_10/model/Cartao.dart';
 import 'package:joga_10/pages/main_page.dart';
+import 'package:joga_10/service/CartaoService.dart';
 
 class PartidaPage extends StatefulWidget {
   final List<String> equipe1Members;
@@ -57,36 +59,54 @@ class _PartidaPageState extends State<PartidaPage> {
                           color: Color.fromARGB(68, 56, 25, 139),
                           child: ListTile(
                             title: Row(
-                              children: [
-                                Text(member, style: TextStyle(color: Colors.white)),
-                                Spacer(), // Aqui você define a avaliação do membro
-                              ],
-                            ),
+              children: [
+                CircleAvatar(
+                  child: Image.asset(
+                    'lib/assets/img/volei.png', // Substitua pelo caminho correto do seu asset
+                    width: 48.0, // Ajuste conforme necessário
+                    height: 48.0, // Ajuste conforme necessário
+                  ),
+                ),
+                SizedBox(width: 8.0), // Adicione um espaçamento entre o avatar e o texto
+                Text(member, style: TextStyle(color: Colors.white)),
+                Spacer(),
+                // Aqui você define a avaliação do membro
+              ],
+            ),
                           ),
                         ),
                       )
                       .toList(),
                 ),
-                Text("Equipe 2:", style: TextStyle(color: Colors.white)),
-                Column(
-                  children: widget.equipe2Members
-                      .map(
-                        (member) => Card(
-                          color: Color.fromARGB(68, 56, 25, 139),
-                          child: ListTile(
-                            title: Row(
-                              children: [
-                                Text(member, style: TextStyle(color: Colors.white)),
-                                Spacer(),
-                                // Aqui você define a avaliação do membro
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
+            Text("Equipe 2:", style: TextStyle(color: Colors.white)),
+Column(
+  children: widget.equipe2Members
+      .map(
+        (member) => Card(
+          color: Color.fromARGB(68, 56, 25, 139),
+          child: ListTile(
+            title: Row(
+              children: [
+                CircleAvatar(
+                  child: Image.asset(
+                    'lib/assets/img/volei.png', // Substitua pelo caminho correto do seu asset
+                    width: 48.0, // Ajuste conforme necessário
+                    height: 48.0, // Ajuste conforme necessário
+                  ),
                 ),
-                Text("Comentários:", style: TextStyle(color: Colors.white)),
+                SizedBox(width: 8.0), // Adicione um espaçamento entre o avatar e o texto
+                Text(member, style: TextStyle(color: Colors.white)),
+                Spacer(),
+                // Aqui você define a avaliação do membro
+              ],
+            ),
+          ),
+        ),
+      )
+      .toList(),
+                ),
+                
+                Text("\n\nComentários:", style: TextStyle(color: Colors.white)),
                 TextFormField(
                   decoration: InputDecoration(
                     hintText: "Adicione seus comentários aqui",
@@ -106,7 +126,7 @@ class _PartidaPageState extends State<PartidaPage> {
                     SizedBox(width: 20.0), // Adicione um espaço entre os botões
                     ElevatedButton(
                       onPressed: () {
-                        // Adicione a lógica para a tela de pagamento
+                        _showCardSelectionModal(); 
                       },
                       child: Text("Pagamento"),
                     ),
@@ -119,4 +139,46 @@ class _PartidaPageState extends State<PartidaPage> {
       ),
     );
   }
+void _showCardSelectionModal() {
+  showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+      return FutureBuilder<List<Cartao>>(
+        future: CartaoService().getListCartaoUser(widget.userData['id_user'].toString()),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator();
+          } else if (snapshot.hasError) {
+            return Text("Erro ao carregar os cartões");
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Text("Nenhum cartão cadastrado");
+          } else {
+            return ListView.builder(
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                Cartao cartao = snapshot.data![index];
+                return ListTile(
+                  title: Text(cartao.toString()), 
+                  onTap: () {
+  Navigator.pop(context);
+  _showSelectedCard(cartao);
+},
+                );
+              },
+            );
+          }
+        },
+      );
+    },
+  );
 }
+
+void _showSelectedCard(Cartao cartaoSelecionado) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("Cartão Selecionado"),
+    ),
+  );
+}
+}
+

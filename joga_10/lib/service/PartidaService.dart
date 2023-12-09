@@ -119,5 +119,31 @@ class PartidaService {
       throw Exception('Falha ao obter partidas ativas');
     }
   }
+  Future<http.Response> finalizaPartida(int partidaId) async {
+    var uri = Uri.parse("http://192.168.10.104:8080/finalizaPartida");
+
+    Map<String, String> headers = {"Content-Type": "application/json"};
+    Map<String, String> bodyParams = {
+      "id": '$partidaId',
+      "status": "1",
+    };
+
+    try {
+      var body = json.encode(bodyParams);
+      var response = await http.put(uri, headers: headers, body: body);
+
+      if (response.statusCode == 200) {
+        print("Partida finalizada com sucesso: ${response.body}");
+      } else {
+        print("Erro ao finalizar a partida. Código de status: ${response.statusCode}");
+        print("Detalhes do erro: ${response.body}");
+      }
+
+      return response;
+    } catch (e) {
+      print("Erro durante a requisição: $e");
+      throw Exception("Erro durante a requisição: $e");
+    }
+  }
 }
 
