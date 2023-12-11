@@ -40,7 +40,7 @@ final Map<String, dynamic> userData;
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => DetalhePartida(partida: partidas[index]),
+                    builder: (context) => DetalhePartida(partida: partidas[index], userData: userData,),
                   ),
                 );
               },

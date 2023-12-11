@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/model/Cartao.dart';
+import 'package:joga_10/pages/main_page.dart';
 import 'package:joga_10/pages/pagina3.dart';
 import 'package:joga_10/service/CartaoService.dart';
 
@@ -171,7 +172,7 @@ class _Pagina3PageState extends State<CadastroCartaoPage> {
                   ),
                   
                 ),
-                SizedBox(height: 16.0),
+               /* SizedBox(height: 16.0),
                 Text(
                   "Bandeira: $totalPartidas",
                   
@@ -181,13 +182,13 @@ class _Pagina3PageState extends State<CadastroCartaoPage> {
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
-                ),
+                ),*/
                 SizedBox(height: 16.0),
                 ElevatedButton(
                   onPressed: () {
                    
                     salvarDados();
-                    
+                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainPage(userData:widget.userData,))); // Navega para a MainPage // Retorna à tela anterior
 
                   },
                   child: Text("Salvar"),

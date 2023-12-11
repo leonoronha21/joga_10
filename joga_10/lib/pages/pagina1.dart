@@ -98,7 +98,7 @@ class _Pagina1PageState extends State<Pagina1Page> {
                 itemCount: historicoPartidas.length,
                 itemBuilder: (context, index) {
                   return PartidaItemWidget(
-                    partida: historicoPartidas[index],
+                    partida: historicoPartidas[index], userData: widget.userData,
                   );
                 },
               ),
@@ -112,8 +112,9 @@ class _Pagina1PageState extends State<Pagina1Page> {
 
 class PartidaItemWidget extends StatelessWidget {
   final Partida partida;
+  final Map<String, dynamic> userData;
 
-  PartidaItemWidget({required this.partida});
+  PartidaItemWidget({required this.partida, required this.userData});
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +147,7 @@ class PartidaItemWidget extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => DetalhePartida(partida: partida)),
+          MaterialPageRoute(builder: (context) => DetalhePartida(partida: partida, userData: userData,)),
         );
       },
     );

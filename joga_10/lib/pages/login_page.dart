@@ -320,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
       UsuarioService usuarioService = UsuarioService();
       Map<String, dynamic> decodedToken = await usuarioService.decodeToken(token);
       
-      // Agora você pode usar as informações do token decodificado
+     
     
       print('Informações do usuário: ${decodedToken.toString()}');
 
@@ -331,11 +331,11 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } else {
-      // Lidar com o erro de autenticação, se necessário.
+      
       print('Erro de autenticação: ${response.body}');
     }
   } catch (e) {
-    // Lidar com exceções aqui, por exemplo, exibir uma mensagem de erro.
+   
     print('Erro durante o login: $e');
   }
 }

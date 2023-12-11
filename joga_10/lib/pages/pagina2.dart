@@ -35,6 +35,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
   @override
   void initState() {
     super.initState();
+    getAllQuadras(); // Carrega as quadras no início
     loadPartidas();
   }
 
@@ -46,9 +47,6 @@ class _Pagina2PageState extends State<Pagina2Page> {
         setState(() {
           this.partidas = partidas;
         });
-
-        // Chamada para getAllQuadras após obter as partidas
-        await getAllQuadras();
       } else {
         print("A resposta do servidor não é uma lista de objetos Partida.");
       }
@@ -68,6 +66,10 @@ class _Pagina2PageState extends State<Pagina2Page> {
           key: (quadra) => quadra.tipoQuadra,
           value: (quadra) => setIconePorTipoQuadra(quadra.tipoQuadra),
         );
+
+        setState(() {
+          this.quadras = quadras; // Atualiza o estado com a lista de quadras.
+        });
       } else {
         print("A resposta do servidor não é uma lista de objetos Quadra.");
       }
@@ -146,17 +148,11 @@ class _Pagina2PageState extends State<Pagina2Page> {
                 itemCount: partidas.length,
                 itemBuilder: (context, index) {
                   final partida = partidas[index];
-                 String tipoQuadra = getTipoQuadraForPartida(partida, quadras);
+                  String tipoQuadra = getTipoQuadraForPartida(partida, quadras);
                   String iconeQuadra = quadraIcones[tipoQuadra] ?? '';
 
                   return ListTile(
                     isThreeLine: true,
-                   /* leading: Container(
-                      child: Image.asset(                       iconeQuadra,
-                        width: 100,
-                        height: 100,
-                      ),
-                    ),*/
                     title: Text(
                       "Partida ${partida.id}",
                       style: TextStyle(
@@ -177,7 +173,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => DetalhePartida(partida: partida),
+                          builder: (context) => DetalhePartida(partida: partida, userData: widget.userData),
                         ),
                       );
                     },
@@ -191,23 +187,23 @@ class _Pagina2PageState extends State<Pagina2Page> {
     );
   }
 
-String getTipoQuadraForPartida(Partida partida, List<Quadras> quadras) {
-  try {
-    var idQuadra = partida.idQuadra;
+  String getTipoQuadraForPartida(Partida partida, List<Quadras> quadras) {
+    try {
+      var idQuadra = partida.idQuadra;
 
-    // Utilize firstWhereOrNull do pacote collection
-    var quadraCorrespondente = quadras.firstWhereOrNull((quadra) => quadra.id == idQuadra);
+      // Utilize firstWhereOrNull do pacote collection
+      var quadraCorrespondente = quadras.firstWhereOrNull((quadra) => quadra.id == idQuadra);
 
-    if (quadraCorrespondente != null) {
-      var tipoQuadra = quadraCorrespondente.tipoQuadra;
-      return tipoQuadra;
-    } else {
-      print("Quadra não encontrada para o id ${idQuadra} da partida ${partida.id}");
+      if (quadraCorrespondente != null) {
+        var tipoQuadra = quadraCorrespondente.tipoQuadra;
+        return tipoQuadra;
+      } else {
+        print("Quadra não encontrada para o id ${idQuadra} da partida ${partida.id}");
+        return '';
+      }
+    } catch (e) {
+      print("Erro ao obter o tipo de quadra para a partida ${partida.id}: $e");
       return '';
     }
-  } catch (e) {
-    print("Erro ao obter o tipo de quadra para a partida ${partida.id}: $e");
-    return '';
   }
-}
 }
