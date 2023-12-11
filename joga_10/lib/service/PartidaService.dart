@@ -10,7 +10,7 @@ class PartidaService {
 
 
  Future<http.Response> SavePartida(PartidaData partidaData) async {
-    var uri = Uri.parse("http://192.168.10.104:8080/criarPartidas");
+    var uri = Uri.parse("http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/criarPartidas");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
@@ -33,7 +33,7 @@ class PartidaService {
   }
 
    Future<List<Partida>> getAllPartidas() async {
-    final response = await http.get(Uri.parse('http://192.168.10.104:8080/listaPartidas'));
+    final response = await http.get(Uri.parse('http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/listaPartidas'));
 
     if (response.statusCode == 200) {
       Iterable lista = json.decode(response.body);
@@ -44,7 +44,7 @@ class PartidaService {
     }
   }
   Future<Partida> getPartidaByIdAndUserId(String partidaId, String userId) async {
-    var uri = Uri.parse("http://192.168.10.104:8080/partidaPorId");
+    var uri = Uri.parse("http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidaPorId");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {
@@ -73,7 +73,7 @@ class PartidaService {
   }
 
    Future<List<Partida>> getPartidasByUserId(String userId) async {
-    var uri = Uri.parse("http://192.168.10.104:8080/partidasPorUsuario");
+    var uri = Uri.parse("http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidasPorUsuario");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {
@@ -100,7 +100,7 @@ class PartidaService {
   }
   Future<List<Partida>> getPartidasAtivas(String idUser, String status) async {
     final response = await http.post(
-      Uri.parse('http://192.168.10.104:8080/partidasAtivas'),
+      Uri.parse('http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidasAtivas'),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },
@@ -120,7 +120,7 @@ class PartidaService {
     }
   }
   Future<http.Response> finalizaPartida(int partidaId) async {
-    var uri = Uri.parse("http://192.168.10.104:8080/finalizaPartida");
+    var uri = Uri.parse("http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/finalizaPartida");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {

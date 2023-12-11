@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class QuadraService {
-  final String baseUrl = "http://192.168.10.104:8080";
+  final String baseUrl = "http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080";
 
   Future<List<Quadras>> getAllQuadras() async {
     try {

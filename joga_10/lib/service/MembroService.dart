@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class MembroService {
   Future adicionarMembroPartida(int idPartida, int idUser, String equipe, String nome) async {
-    final url = Uri.parse('http://192.168.10.104:8080/adicionaMembro');
+    final url = Uri.parse('http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/adicionaMembro');
     
     final response = await http.post(
       url,
