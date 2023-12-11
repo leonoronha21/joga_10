@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:joga_10/model/Cartao.dart';
 
 class CartaoService {
-  final String baseUrl = "http://192.168.10.104:8080";
+  final String baseUrl = "http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080";
 
   
 

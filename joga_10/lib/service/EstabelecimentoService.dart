@@ -9,7 +9,7 @@ class EstabelecimentoService {
   String email, String cep, String cidade, String bairro, String rua, String contato, String hora_abertura,String hora_fechamento
   ,String telefone,String numero) async {
 
-    var uri = Uri.parse("http://192.168.10.104:8080/cadastroEstabelecimento");
+    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/cadastroEstabelecimento");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
@@ -36,7 +36,7 @@ class EstabelecimentoService {
     return response;
   }
    Future<List<Estabelecimentos>> getAllEstabelecimentos() async {
-    var uri = Uri.parse("http://192.168.10.104:8080/estabelecimentos");
+    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/estabelecimentos");
 
     var response = await http.get(uri);
 

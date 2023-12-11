@@ -298,7 +298,7 @@ class _LoginPageState extends State<LoginPage> {
   }
   
   Future<void> login() async {
-  final url = Uri.parse('http://192.168.10.104:8080/login'); 
+  final url = Uri.parse('http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/login'); 
 
   try {
     final response = await http.post(
