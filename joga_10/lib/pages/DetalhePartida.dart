@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/pages/main_page.dart';
+import 'package:joga_10/service/MembroService.dart';
 import 'package:joga_10/service/PartidaService.dart';
 
 class DetalhePartida extends StatefulWidget {
@@ -12,6 +13,7 @@ class DetalhePartida extends StatefulWidget {
 
   @override
   _DetalhePartidaState createState() => _DetalhePartidaState();
+  
 }
 
 class _DetalhePartidaState extends State<DetalhePartida> {
@@ -39,7 +41,7 @@ class _DetalhePartidaState extends State<DetalhePartida> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Dono da Partida: ${widget.partida.userId}",
+                Text("Dono da Partida: ${widget.partida.userId} ${widget.userData['nome']} ",
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -165,9 +167,9 @@ class _DetalhePartidaState extends State<DetalhePartida> {
                             ElevatedButton(
                               onPressed: () {
                                 try {
-                                  // Substitua "partidaId" pelo ID da partida que deseja finalizar
+                                  
                                   PartidaService partidaService = PartidaService();
-                                  // Chama o serviço para finalizar a partida
+                              
                                   partidaService.finalizaPartida(widget.partida.id);
 
                                   // Exibe o modal com a mensagem "Partida finalizada"
@@ -180,7 +182,7 @@ class _DetalhePartidaState extends State<DetalhePartida> {
                                         actions: [
                                           ElevatedButton(
                                             onPressed: () {
-                                              Navigator.of(context).pop(); // Fecha o modal
+                                              Navigator.of(context).pop(); 
                                                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainPage(userData:widget.userData,))); // Navega para a MainPage // Retorna à tela anterior
                                             },
                                             child: Text("OK"),
@@ -190,15 +192,15 @@ class _DetalhePartidaState extends State<DetalhePartida> {
                                     },
                                   );
                                 } catch (e) {
-                                  // Trata erros, se necessário
+                                  
                                   print("Erro ao finalizar a partida: $e");
                                 }
                               },
                               child: Text("Finalizar Partida"),
                             ),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context); // Voltar à tela anterior
+                               onPressed: () {
+                               _mostrarSelecaoEquipe(context);
                               },
                               child: Text("Entrar na Partida"),
                             ),
@@ -206,7 +208,7 @@ class _DetalhePartidaState extends State<DetalhePartida> {
                         )
                       : ElevatedButton(
                           onPressed: () {
-                            Navigator.pop(context); // Voltar à tela anterior
+                            Navigator.pop(context); 
                           },
                           child: Text("Entrar na Partida"),
                         ),
@@ -218,7 +220,57 @@ class _DetalhePartidaState extends State<DetalhePartida> {
       ),
     );
   }
+  void _adicionarUsuarioAEquipe(String equipe) {
+  try {
+  
+    MembroService partidaService = MembroService();
+    partidaService.adicionarMembroPartida(
+        widget.partida.id, widget.userData['id_user'], equipe, widget.userData['nome']);
+
+  } catch (e) {
+    print("Erro ao adicionar usuário à equipe: $e");
+    // Trate o erro conforme necessário
+  }
 }
+
+void _mostrarSelecaoEquipe(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text("Selecionar Equipe"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                try{
+                _adicionarUsuarioAEquipe("Equipe 1");
+                Navigator.of(context).pop(); 
+              }catch (e){
+                print('Erro ao adicionar usuário à equipe: $e');
+              }},
+              child: Text("Equipe 1"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                try{
+                _adicionarUsuarioAEquipe("Equipe 2");
+                Navigator.of(context).pop(); 
+              }catch(e){
+                     print('Erro ao adicionar usuário à equipe: $e');
+              }},
+              child: Text("Equipe 2"),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+}
+
+
 
 class StarRating extends StatefulWidget {
   @override
@@ -306,8 +358,8 @@ void _mostrarDialogoDenuncia(BuildContext context) {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Adicione a lógica para processar a denúncia
-                Navigator.of(context).pop(); // Fechar o diálogo
+               
+                Navigator.of(context).pop(); 
               },
               child: Text("Enviar"),
             ),

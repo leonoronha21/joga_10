@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:joga_10/apiconfig.dart';
 import 'package:joga_10/pages/criarUsuario.dart';
 import 'package:joga_10/pages/esqueciSenha.dart';
 import 'package:joga_10/pages/main_page.dart';
 import 'package:joga_10/pages/parceiro.dart';
 import 'package:http/http.dart' as http;
 import 'package:joga_10/service/UsuarioService.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /*
 class LoginPage extends StatefulWidget {
@@ -298,7 +298,7 @@ class _LoginPageState extends State<LoginPage> {
   }
   
   Future<void> login() async {
-  final url = Uri.parse('http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/login'); 
+  final url = Uri.parse('${ApiConfig.baseUrl}/login'); 
 
   try {
     final response = await http.post(

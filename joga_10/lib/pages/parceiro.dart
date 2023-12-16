@@ -172,7 +172,7 @@ class _ParceiroPageState extends State<ParceiroPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Ação a ser realizada ao pressionar o botão de registro
+             
               estabelecimento.SaveEstabelecimento(cnpjController.text, 
               nomeFantasiaController.text, razaoSocialController.text, emailController.text, cepController.text, 
               cidadeController.text, bairroController.text, ruaController.text, telefoneController.text, horaAberturaController.text, 

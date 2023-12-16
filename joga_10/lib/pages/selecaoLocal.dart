@@ -68,10 +68,10 @@ class _SelecionaLocalPageState extends State<SelecionaLocalPage> {
                             estabelecimento.id)
                         .length
                         .toString(),
-                     // Substitua por uma propriedade real do estabelecimento se existir
+                   
                   );
 
-                  // Agora, para cada estabelecimento, você pode listar as quadras correspondentes
+               
                   List<QuadraItem> quadrasWidgets = quadrasList
                       .where((quadra) =>
                           quadra.idEstabelecimento ==
@@ -84,7 +84,7 @@ class _SelecionaLocalPageState extends State<SelecionaLocalPage> {
                           ))
                       .toList();
 
-                  // Adicione o LocalItem seguido das QuadraItems na árvore de widgets
+               
                   return Column(
                     children: [
                       localItem,

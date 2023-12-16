@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/apiconfig.dart';
 import 'package:joga_10/model/Estabelecimentos.dart';
 
 class EstabelecimentoService {
@@ -9,7 +10,7 @@ class EstabelecimentoService {
   String email, String cep, String cidade, String bairro, String rua, String contato, String hora_abertura,String hora_fechamento
   ,String telefone,String numero) async {
 
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/cadastroEstabelecimento");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/cadastroEstabelecimento");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
@@ -36,7 +37,7 @@ class EstabelecimentoService {
     return response;
   }
    Future<List<Estabelecimentos>> getAllEstabelecimentos() async {
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/estabelecimentos");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/estabelecimentos");
 
     var response = await http.get(uri);
 

@@ -167,10 +167,10 @@ PartidaData buildPartidaDataAsObject() {
         title: Text("Criar Partida"),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+       // padding: const EdgeInsets.all(16.0),
         children: [
-          const SizedBox(height: 20),
-          Text(
+          /*  const SizedBox(height: 20),
+         Text(
             "Selecionar Esporte",
             style: TextStyle(
               fontSize: 18,
@@ -179,7 +179,7 @@ PartidaData buildPartidaDataAsObject() {
             ),
           ),
           SizedBox(height: 8.0),
-          DropdownButton<String>(
+         DropdownButton<String>(
             value: selectedSport,
             onChanged: (String? newValue) {
               setState(() {
@@ -203,8 +203,8 @@ PartidaData buildPartidaDataAsObject() {
                 ),
               );
             }).toList(),
-          ),
-          SizedBox(height: 20.0),
+          ),*/
+          //SizedBox(height: 20.0),
           RadioListTile(
             title: Text('Time Único', style: TextStyle(color: Colors.white)),
             value: true,
@@ -258,8 +258,8 @@ PartidaData buildPartidaDataAsObject() {
                             leading: CircleAvatar(
 
   child: Image.asset(
-    'lib/assets/img/volei.png', // substitua pelo caminho correto do seu asset
-   // ajuste conforme necessário
+    'lib/assets/img/volei.png', 
+  
   ),),
                       trailing: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -315,8 +315,8 @@ PartidaData buildPartidaDataAsObject() {
                     leading: CircleAvatar(
 
   child: Image.asset(
-    'lib/assets/img/volei.png', // substitua pelo caminho correto do seu asset
-   // ajuste conforme necessário
+    'lib/assets/img/volei.png', 
+  
   ),
                     ),
                     trailing: ElevatedButton(

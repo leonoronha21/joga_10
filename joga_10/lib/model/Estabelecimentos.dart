@@ -2,14 +2,14 @@ class Estabelecimentos {
   final int id;
   final String cnpj;
   final String nome;
-  final String razaoSocial; // Correspondente a razao_social em Java
+  final String razaoSocial; 
   final String cidade;
   final String cep;
   final String rua;
   final String bairro;
   final String numero;
-  final String horaAbertura; // Correspondente a hora_abertura em Java
-  final String horaFechamento; // Correspondente a hora_fechamento em Java
+  final String horaAbertura; 
+  final String horaFechamento; 
   final String telefone;
   final String email;
 

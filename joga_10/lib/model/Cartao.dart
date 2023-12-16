@@ -8,7 +8,7 @@ class Cartao {
   late int idUser;
   late String validade;
 
-  // Construtor
+
   Cartao({
    
     required this.cpf,
@@ -20,7 +20,7 @@ class Cartao {
     required this.validade,
   });
 
-  // Converte de JSON para Cartao
+
   factory Cartao.fromJson(Map<String, dynamic> json) {
     return Cartao(
       
@@ -34,7 +34,7 @@ class Cartao {
     );
   }
 
-  // Converter de  Cartao para JSON
+
   Map<String, dynamic> toJson() {
     return {
   
@@ -49,7 +49,7 @@ class Cartao {
   }
    @override
   String toString() {
-    // Mostrar apenas os 4 últimos dígitos
+   
     String ultimosDigitos = numeroCartao.length >= 4
         ? '**** **** **** ' + numeroCartao.substring(numeroCartao.length - 4)
         : numeroCartao;

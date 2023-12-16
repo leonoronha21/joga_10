@@ -4,9 +4,9 @@ class Partida {
   final int id;
   final int idEstabelecimento;
   final int idQuadra;
-  final int userId; // Alterado para dynamic
+  final int userId; 
   final String duracao;
-  final String dataHora; // Alterado para dynamic
+  final String dataHora; 
   final String status;
   final double preco;
   final List<PartidaMembro> membros;

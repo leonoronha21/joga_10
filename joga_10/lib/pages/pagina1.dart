@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/pages/DetalhePartida.dart';
-import 'package:joga_10/pages/partida.dart';
 import 'package:joga_10/pages/partidas.dart';
 import 'package:joga_10/pages/selecaoLocal.dart';
 import 'package:joga_10/service/PartidaService.dart';

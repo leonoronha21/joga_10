@@ -13,7 +13,7 @@ class Pagina3Page extends StatefulWidget {
 }
 
 class _Pagina3PageState extends State<Pagina3Page> {
-  // Lista de cartões cadastrados
+
   List<Cartao> cartoesCadastrados = [];
 
   // Serviço para obter cartões
@@ -22,7 +22,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
   @override
   void initState() {
     super.initState();
-    // Carregar a lista de cartões ao inicializar a tela
+   
     carregarCartoes();
   }
 
@@ -31,12 +31,12 @@ class _Pagina3PageState extends State<Pagina3Page> {
       List<Cartao> cartoes = await cartaoService.getListCartaoUser(widget.userData['id_user'].toString());
 
       setState(() {
-        // Atualizar o estado com a lista de cartões
+      
         cartoesCadastrados = cartoes;
       });
     } catch (e) {
       print("Erro ao carregar os cartões: $e");
-      // Adicione a lógica necessária para lidar com erros, como exibir uma mensagem de erro ao usuário.
+  
     }
   }
 
@@ -68,7 +68,7 @@ class _Pagina3PageState extends State<Pagina3Page> {
                   ),
                 ),
                 SizedBox(height: 16.0),
-                // Lista de cartões
+               
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -79,9 +79,9 @@ class _Pagina3PageState extends State<Pagina3Page> {
                       : cartoesCadastrados[index].numeroCartao;
                     return GestureDetector(
                       onTap: () {
-                        // Adicione a ação desejada ao tocar no cartão
+                      
                         print("Cartão tocado: ${cartoesCadastrados[index].numeroCartao}");
-                        // Adicione aqui a navegação para outra página ou ação desejada
+                        
                       },
                       child: ListTile(
                         title: Text(

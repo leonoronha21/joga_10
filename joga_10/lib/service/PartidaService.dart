@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:joga_10/apiconfig.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaData.dart';
 
@@ -10,7 +11,7 @@ class PartidaService {
 
 
  Future<http.Response> SavePartida(PartidaData partidaData) async {
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/criarPartidas");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/criarPartidas");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
@@ -33,7 +34,7 @@ class PartidaService {
   }
 
    Future<List<Partida>> getAllPartidas() async {
-    final response = await http.get(Uri.parse('http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/listaPartidas'));
+    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/listaPartidas'));
 
     if (response.statusCode == 200) {
       Iterable lista = json.decode(response.body);
@@ -44,7 +45,7 @@ class PartidaService {
     }
   }
   Future<Partida> getPartidaByIdAndUserId(String partidaId, String userId) async {
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidaPorId");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/partidaPorId");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {
@@ -73,7 +74,7 @@ class PartidaService {
   }
 
    Future<List<Partida>> getPartidasByUserId(String userId) async {
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidasPorUsuario");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/partidasPorUsuario");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {
@@ -100,7 +101,7 @@ class PartidaService {
   }
   Future<List<Partida>> getPartidasAtivas(String idUser, String status) async {
     final response = await http.post(
-      Uri.parse('http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/partidasAtivas'),
+      Uri.parse('${ApiConfig.baseUrl}/partidasAtivas'),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },
@@ -111,7 +112,7 @@ class PartidaService {
     );
 
     if (response.statusCode == 200) {
-      // Parse da resposta JSON
+
       List<dynamic> data = jsonDecode(response.body);
       List<Partida> partidas = data.map((e) => Partida.fromJson(e)).toList();
       return partidas;
@@ -120,7 +121,7 @@ class PartidaService {
     }
   }
   Future<http.Response> finalizaPartida(int partidaId) async {
-    var uri = Uri.parse("http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/finalizaPartida");
+    var uri = Uri.parse("${ApiConfig.baseUrl}/finalizaPartida");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, String> bodyParams = {
@@ -145,5 +146,7 @@ class PartidaService {
       throw Exception("Erro durante a requisição: $e");
     }
   }
+  
+  
 }
 

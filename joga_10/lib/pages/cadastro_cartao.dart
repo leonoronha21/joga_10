@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/model/Cartao.dart';
 import 'package:joga_10/pages/main_page.dart';
-import 'package:joga_10/pages/pagina3.dart';
 import 'package:joga_10/service/CartaoService.dart';
 
 class CadastroCartaoPage extends StatefulWidget {
@@ -207,24 +206,24 @@ class _Pagina3PageState extends State<CadastroCartaoPage> {
 
         cpf: cpfcontroller.text,
         cvc: cvcControler.text,
-        bandeira: "Bandeira padrão",  // Substitua pela lógica necessária
-        numeroCartao: numeroCartaoController.text,  // Substitua pela lógica necessária
+        bandeira: "Bandeira padrão",  
+        numeroCartao: numeroCartaoController.text,  
         nomeTitular: nomeController.text,
-        idUser: widget.userData['id_user'],  // Use o ID do usuário do widget
-        validade: validadeController.text,  // Substitua pela lógica necessária
+        idUser: widget.userData['id_user'],  
+        validade: validadeController.text, 
       );
 
-      // Chame o método cadastraCartao do serviço
+     
       String resultadoCadastro = await cartaoService.cadastraCartao(cartao);
 
-      // Exiba o resultado do cadastro
+    
       print("Resultado do cadastro: $resultadoCadastro");
 
-      // Adicione qualquer lógica adicional após o cadastro, se necessário
+    
     } catch (e) {
-      // Lidere com erros durante o processo de salvamento
+      
       print("Erro ao cadastrar o cartão: $e");
-      // Exiba uma mensagem de erro ou tome medidas apropriadas
+    
     }
   }
 }

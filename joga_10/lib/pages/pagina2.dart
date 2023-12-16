@@ -35,7 +35,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
   @override
   void initState() {
     super.initState();
-    getAllQuadras(); // Carrega as quadras no início
+    getAllQuadras(); 
     loadPartidas();
   }
 
@@ -68,7 +68,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
         );
 
         setState(() {
-          this.quadras = quadras; // Atualiza o estado com a lista de quadras.
+          this.quadras = quadras; 
         });
       } else {
         print("A resposta do servidor não é uma lista de objetos Quadra.");
@@ -190,8 +190,7 @@ class _Pagina2PageState extends State<Pagina2Page> {
   String getTipoQuadraForPartida(Partida partida, List<Quadras> quadras) {
     try {
       var idQuadra = partida.idQuadra;
-
-      // Utilize firstWhereOrNull do pacote collection
+      //COLLECTION
       var quadraCorrespondente = quadras.firstWhereOrNull((quadra) => quadra.id == idQuadra);
 
       if (quadraCorrespondente != null) {

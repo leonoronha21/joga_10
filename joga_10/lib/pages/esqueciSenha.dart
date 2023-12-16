@@ -40,9 +40,7 @@ class _EsqueciSenhaPageState extends State<EsqueciSenhaPage> {
             
             ElevatedButton(
               onPressed: () {
-                // Lógica para enviar o email de redefinição de senha aqui
-                // Normalmente, você enviaria um email para o endereço fornecido
-                // com um link para redefinir a senha.
+               //TENHO QUE COLOCAR A LÓGICA PARA RESET DE SENHA AQUI
               },
               child: Text('Enviar'),
             ),

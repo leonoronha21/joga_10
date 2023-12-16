@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/model/Partida.dart';
-import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/pages/DetalhePartida.dart';
 
 class PartidasPage extends StatelessWidget {

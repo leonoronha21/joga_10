@@ -1,8 +1,8 @@
 class PartidaMembro {
-  int id; // ajuste aqui
-  int idUser; // ajuste aqui
-  String equipe; // ajuste aqui
-  String nome; // ajuste aqui
+  int id; 
+  int idUser; 
+  String equipe; 
+  String nome; 
 
   PartidaMembro({
     required this.id,
@@ -13,19 +13,19 @@ class PartidaMembro {
 
   factory PartidaMembro.fromJson(Map<String, dynamic> json) {
     return PartidaMembro(
-      id: json['id'], // ajuste aqui
+      id: json['id'],
       idUser: json['id_user'],
       equipe: json['equipe'],
-      nome: json['nome'], // ajuste aqui
+      nome: json['nome'], 
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id, // ajuste aqui
+      'id': id, 
       'id_user': idUser,
       'equipe': equipe,
-      'nome': nome, // ajuste aqui
+      'nome': nome, 
     };
   }
 }

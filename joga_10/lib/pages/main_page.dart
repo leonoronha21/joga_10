@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:joga_10/pages/login_page.dart';
 import 'package:joga_10/pages/pagina1.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dados_cadastrais.dart';
 import 'pagina2.dart';
 import 'pagina3.dart';
@@ -27,7 +26,7 @@ class _MainPageState extends State<MainPage> {
             backgroundColor: Color.fromARGB(68, 56, 25, 139),
             title: Image.asset(
               'lib/assets/img/Joga_transparente.png',
-              width: 120, // Ajuste a largura conforme necessário
+              width: 120, // AjustA a largura conforme necessário
             ),
             centerTitle: true, // Centraliza a imagem no AppBar
           ),

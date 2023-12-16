@@ -1,9 +1,10 @@
+import 'package:joga_10/apiconfig.dart';
 import 'package:joga_10/model/Quadras.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class QuadraService {
-  final String baseUrl = "http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080";
+  final String baseUrl = "${ApiConfig.baseUrl}";
 
   Future<List<Quadras>> getAllQuadras() async {
     try {
@@ -24,7 +25,7 @@ class QuadraService {
       }
     } catch (e) {
       print("Erro ao obter as quadras: $e");
-      // Adicione a lógica necessária para lidar com erros, como exibir uma mensagem de erro ao usuário.
+
       throw e;
     }
   }

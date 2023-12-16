@@ -62,15 +62,15 @@ class _PartidaPageState extends State<PartidaPage> {
               children: [
                 CircleAvatar(
                   child: Image.asset(
-                    'lib/assets/img/volei.png', // Substitua pelo caminho correto do seu asset
-                    width: 48.0, // Ajuste conforme necessário
-                    height: 48.0, // Ajuste conforme necessário
+                    'lib/assets/img/volei.png', 
+                    width: 48.0, 
+                    height: 48.0,
                   ),
                 ),
-                SizedBox(width: 8.0), // Adicione um espaçamento entre o avatar e o texto
+                SizedBox(width: 8.0), 
                 Text(member, style: TextStyle(color: Colors.white)),
                 Spacer(),
-                // Aqui você define a avaliação do membro
+            
               ],
             ),
                           ),
@@ -123,7 +123,7 @@ Column(
                       },
                       child: Text("Menu principal"),
                     ),
-                    SizedBox(width: 20.0), // Adicione um espaço entre os botões
+                    SizedBox(width: 20.0), 
                     ElevatedButton(
                       onPressed: () {
                         _showCardSelectionModal(); 
