@@ -178,7 +178,7 @@ String getIconPath(String quadraNome) {
   } else if (quadraNome.toLowerCase().contains('futevolei')) {
     return 'lib/assets/img/voleibol.png';
   } else if (quadraNome.toLowerCase().contains('tenis')) {
-    return 'lib/assets/img/tenis.png';
+    return 'lib/assets/img/quadra-de-tenis.png';
   } else {
     return 'lib/assets/img/futebol.png';
   }

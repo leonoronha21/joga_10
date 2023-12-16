@@ -41,7 +41,7 @@ class _DetalhePartidaState extends State<DetalhePartida> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Dono da Partida: ${widget.partida.userId} ${widget.userData['nome']} ",
+                Text("Dono da Partida: ${widget.partida.userId} ",
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -208,7 +208,7 @@ class _DetalhePartidaState extends State<DetalhePartida> {
                         )
                       : ElevatedButton(
                           onPressed: () {
-                            Navigator.pop(context); 
+                          _mostrarSelecaoEquipe(context);
                           },
                           child: Text("Entrar na Partida"),
                         ),

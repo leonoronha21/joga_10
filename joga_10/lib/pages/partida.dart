@@ -48,7 +48,7 @@ class _PartidaPageState extends State<PartidaPage> {
                 Text("Dono da partida: ${widget.userData['nome']}${widget.userData['sobrenome']}", style: TextStyle(color: Colors.white)),
                 Text("Estabelecimento: ${widget.estabelecimento}", style: TextStyle(color: Colors.white)),
                 Text("Preco: ${widget.price}", style: TextStyle(color: Colors.white)),
-                Text("Esporte: ${widget.selectedSport}", style: TextStyle(color: Colors.white)),
+                //Text("Esporte: ${widget.selectedSport}", style: TextStyle(color: Colors.white)),
                 Text("Quadra: ${widget.selectedLocation}", style: TextStyle(color: Colors.white)),
                 Text("Horário: ${widget.selectedTime}", style: TextStyle(color: Colors.white)),
                 Text("Equipe 1:", style: TextStyle(color: Colors.white)),
