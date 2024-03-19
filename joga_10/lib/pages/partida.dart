@@ -10,7 +10,7 @@ class PartidaPage extends StatefulWidget {
   final String estabelecimento;
   final String price;
   final String selectedTime;
-  final String selectedSport;
+  //final String selectedSport;
     final Map<String, dynamic> userData;
 
   PartidaPage({
@@ -20,7 +20,7 @@ class PartidaPage extends StatefulWidget {
     required this.estabelecimento,
     required this.price,
     required this.selectedTime,
-    required this.selectedSport,
+   // required this.selectedSport,
     required this.userData
   });
 

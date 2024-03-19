@@ -6,21 +6,14 @@ import 'package:joga_10/pages/criarUsuario.dart';
 import 'package:joga_10/pages/esqueciSenha.dart';
 import 'package:joga_10/pages/main_page.dart';
 import 'package:joga_10/pages/parceiro.dart';
-import 'package:http/http.dart' as http;
 import 'package:joga_10/service/UsuarioService.dart';
+import 'package:http/http.dart' as http;
 
-/*
-class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
 
-  @override
-  State<LoginPage> createState() => _LoginPageState();
-}*/
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
-
 
 class _LoginPageState extends State<LoginPage> {
   var emailController = TextEditingController(text: "");
@@ -29,60 +22,41 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    
     return SafeArea(
       child: Scaffold(
+         
         backgroundColor: Color.fromRGBO(56, 25, 139, 0.267),
         body: SingleChildScrollView(
           child: ConstrainedBox(
-            
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                 Expanded(
+                Expanded(
                   child: SizedBox(
                     height: 50,
                   ),
                 ),
                 Row(
                   children: [
-                    Expanded(child: Container(   
-                      color: Color.fromRGBO(56, 25, 139, 0.267),)),
+                    Expanded(child: Container(color: Color.fromRGBO(56, 25, 139, 0.267))),
                     Expanded(
                       flex: 3,
-                       child: Image.asset(
-                          'lib/assets/img/Joga_transparente.png',
-                        ), 
-                      //child: Image.network(
-                     //   "https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg",
-                    //  ),
+                      child: Image.asset(
+                        'lib/assets/img/Joga_transparente.png',
+                      ),
                     ),
                     Expanded(child: Container()),
                   ],
                 ),
-            /*    const SizedBox(
-                  height: 20,
-                ),
-                const Text(
-                  "Joga 10",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),*/
                 const Text(
                   "Faça seu login ou cadastre-se e jogue com a gente",
                   style: TextStyle(fontSize: 14, color: Colors.white),
                 ),
-                const SizedBox(
-                  height: 40,
-                ),
+                const SizedBox(height: 20),
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -115,9 +89,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 15,
-                ),
+                const SizedBox(height: 15),
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -158,16 +130,31 @@ class _LoginPageState extends State<LoginPage> {
                           isObscureText
                               ? Icons.visibility_off
                               : Icons.visibility,
-                             // Color.fromARGB(255, 33, 150, 243),
                           color: const Color.fromARGB(255, 33, 150, 243),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 30,
-                ),
+           const SizedBox(height: 15),
+Container(
+  alignment: Alignment.center,
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Container(
+        height: 40,
+        width: 40,
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(255, 248, 246, 246),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Image.asset('lib/assets/img/google.png', width: 40, height: 40), // Usando o widget Image.asset com o arquivo google.png
+      ),
+      SizedBox(width: 10),                  
+    ],
+  ),
+),
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -175,22 +162,25 @@ class _LoginPageState extends State<LoginPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () {
+                        onPressed: () async {
                        
-                        /*  if (emailController.text.trim() == "admin" &&
-                            senhaController.text.trim() == "user") {
-                          Navigator.pushReplacement(
+                          if(emailController.text.trim() == "admin" && senhaController.text.trim() == "user") 
+                          {
+                              UsuarioService usuarioService =  UsuarioService();
+                              Map<String, dynamic> decodedToken =  await usuarioService.decodeToken('eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJsZW9ub3JvbmhhLmFuZHJhZGVAZ21haWwuY29tIiwibm9tZSI6Ikxlb25hcmRvIiwic29icmVub21lIjoiTm9yb25oYSAiLCJpZF91c2VyIjozOSwiYmFpcnJvIjoiRXN0YW5jaWEiLCJjaWRhZGUiOiJDYW5vYXMiLCJjb21wbGVtZW50byI6IkphcmRpbSBQYXJrIENhbm9hcyIsInJ1YSI6IkFKIFJFTk5FUiIsImNvbnRhdG8iOiI1MTk4MjMwODk4ODExIiwiaWF0IjoxNzEwMjkwNjI3LCJleHAiOjE3MTAzNzcwMjd9.bfngOOzfkYcNw0yvUtwoOhXQ1lnteA2A89zj3TvwzoMFTi5K5qYRPYtIqS6zXPg03o2A7cg3xVQQiiTkglEVrw') as Map<String, dynamic>;
+                              Navigator.pushReplacement(
+                            
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const MainPage(userData: decodedToken),
+                              
+                              builder: (context) =>  MainPage(userData: decodedToken),
                             ),
                           );
-                        } else {*/
+                        } else {
                            login();
-                        
-                        }  // Chama o método login quando o botão é pressionado                       
-     
-                      ,
+                        }
+                         
+                      },
                       style: ButtonStyle(
                         shape: MaterialStateProperty.all(
                           RoundedRectangleBorder(
@@ -202,7 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       child: const Text(
-                        "ENTRAR",
+                        "Entrar",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -212,31 +202,31 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                Expanded(child: Container()),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => EsqueciSenhaPage()));
-                    },
-                    /*child: Text(
-                      "Esqueci minha senha",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),*/
-                  ),
-                ),
+              
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 30),
                   height: 30,
                   alignment: Alignment.center,
                   child: TextButton(
                     onPressed: () {
-                     
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => EsqueciSenhaPage()));
+                    },
+                    child: const Text(
+                      "Esqueci minha senha",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+              
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 30),
+                  height: 30,
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => RegistrationPage()));
                     },
                     style: ButtonStyle(
@@ -257,16 +247,14 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 10,  // Adicione algum espaço entre os botões
-                ),
+                const SizedBox(height: 10),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 30),
                   height: 30,
                   alignment: Alignment.center,
                   child: TextButton(
                     onPressed: () {
-                     Navigator.push(context, MaterialPageRoute(builder: (context) => ParceiroPage()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ParceiroPage()));
                     },
                     style: ButtonStyle(
                       shape: MaterialStateProperty.all(
@@ -274,7 +262,7 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      backgroundColor: MaterialStateProperty.all(Colors.blue), // Personalize a cor conforme necessário
+                      backgroundColor: MaterialStateProperty.all(Colors.blue),
                     ),
                     child: const Text(
                       "Torne-se Parceiro",
@@ -286,9 +274,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(
-                  height: 60,
-                ),
+                const SizedBox(height: 60),
               ],
             ),
           ),
@@ -296,9 +282,9 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-  
+
   Future<void> login() async {
-  final url = Uri.parse('${ApiConfig.baseUrl}/login'); 
+  final url = Uri.parse('${ApiConfig.baseUrl}/login');
 
   try {
     final response = await http.post(
@@ -316,12 +302,10 @@ class _LoginPageState extends State<LoginPage> {
       final Map<String, dynamic> data = json.decode(response.body);
       String token = data['token'];
       print('Token recebido: $token');
-      
+
       UsuarioService usuarioService = UsuarioService();
       Map<String, dynamic> decodedToken = await usuarioService.decodeToken(token);
-      
-     
-    
+
       print('Informações do usuário: ${decodedToken.toString()}');
 
       Navigator.pushReplacement(
@@ -331,13 +315,26 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } else {
-      
-      print('Erro de autenticação: ${response.body}');
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Senha Inválida'),
+            content: Text('A senha digitada está incorreta. Por favor, tente novamente.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     }
   } catch (e) {
-   
     print('Erro durante o login: $e');
   }
-}
-
+  }
 }

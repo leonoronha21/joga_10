@@ -33,12 +33,13 @@ class CriarPartidaPage extends StatefulWidget {
 }
 
 class _CriarPartidaPageState extends State<CriarPartidaPage> {
-  String selectedSport = 'Futebol';
+  //String selectedSport = 'Futebol';
   List<String> equipe1Members = [];
   List<String> equipe2Members = [];
   List<int> selectedUserIds = [];
   bool isSingleTeam = false;
   bool isLocationAndTimeSelected = false;
+  int estabelecimentoId = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +134,7 @@ PartidaData buildPartidaDataAsObject() {
             equipe2Members: equipe2Members,
             selectedLocation: widget.selectedLocation,
             selectedTime: widget.selectedTime,
-            selectedSport: selectedSport,
+           // selectedSport: selectedSport,
             estabelecimento: widget.estabelecimento,
             price: widget.price,
             userData: widget.userData,

@@ -281,6 +281,7 @@ class HorariosDisponiveisPage extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => CriarPartidaPage(
+          
           selectedLocation: nomeQuadra,
           selectedTime: hour,
           price: precoQuadra,

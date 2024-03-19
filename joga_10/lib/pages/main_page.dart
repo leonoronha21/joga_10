@@ -21,6 +21,7 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+           key: appKey,
         backgroundColor: Color.fromARGB(68, 56, 25, 139),
         appBar: AppBar(
             backgroundColor: Color.fromARGB(68, 56, 25, 139),
@@ -110,7 +111,8 @@ class _MainPageState extends State<MainPage> {
           children: [
             Expanded(
               child: PageView(
-                scrollDirection: Axis.vertical,
+                physics: NeverScrollableScrollPhysics(),
+                
                 controller: controller,
                 onPageChanged: (value) {
                   setState(() {
@@ -139,8 +141,8 @@ class _MainPageState extends State<MainPage> {
                   icon: Icon(Icons.search),
                 ),
                 BottomNavigationBarItem(
-                  label: "Pagamento",
-                  icon: Icon(Icons.payment),
+                  label: "Contate-nos",
+                  icon: Icon(Icons.markunread_outlined),
                 ),
               ],
             ),
