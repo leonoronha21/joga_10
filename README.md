@@ -18,22 +18,22 @@ test/: Abriga os testes unitários e de widget.
 Instalação
 Clone o repositório:
 
-bash
+
 Copiar código
 git clone https://github.com/leonoronha21/joga_10.git
 Navegue até o diretório do projeto:
 
-bash
+
 Copiar código
 cd joga_10
 Instale as dependências:
 
-bash
+
 Copiar código
 flutter pub get
 Execute o aplicativo:
 
-bash
+
 Copiar código
 flutter run
 Contribuição
@@ -44,10 +44,11 @@ Crie uma nova branch: git checkout -b minha-feature
 Faça as alterações desejadas e commit: git commit -m 'Minha nova feature'
 Envie para o repositório remoto: git push origin minha-feature
 Abra um Pull Request.
-Licença
+
+#Licença
 Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE para mais detalhes.
 
-Contato
+#Contato
 Para mais informações, visite o perfil do autor no GitHub: Leonardo Noronha de Andrade
 
 Este README fornece uma visão geral do projeto Joga 10, suas funcionalidades, tecnologias utilizadas e instruções para instalação e contribuição.
