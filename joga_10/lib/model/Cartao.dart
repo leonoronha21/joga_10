@@ -1,9 +1,9 @@
 import 'package:joga_10/db/row_utils.dart';
 
-/// Cartão do usuário.
+/// Cartao do usuario.
 ///
-/// SEGURANÇA (PCI-DSS / LGPD): guardamos apenas dados de exibição.
-/// Nunca armazenamos número completo, CVC ou CPF.
+/// SEGURANCA (PCI-DSS / LGPD): guardamos apenas dados de exibicao.
+/// Nunca armazenamos numero completo, CVC ou CPF.
 class Cartao {
   final int? id;
   final int idUser;
@@ -21,7 +21,7 @@ class Cartao {
     required this.validade,
   });
 
-  String get mascarado => '•••• •••• •••• $ultimos4';
+  String get mascarado => '**** **** **** $ultimos4';
 
   factory Cartao.fromRow(Map<String, dynamic> row) {
     return Cartao(

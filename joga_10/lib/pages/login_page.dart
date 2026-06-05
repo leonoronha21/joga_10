@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
       final usuario = await _repo.login(_email.text, _senha.text);
       if (!mounted) return;
       if (usuario == null) {
-        _msg('Email ou senha inválidos.');
+        _msg('Email ou senha invalidos.');
       } else {
         await Sessao.instance.salvar(usuario);
         if (!mounted) return;
@@ -48,8 +48,8 @@ class _LoginPageState extends State<LoginPage> {
           (route) => false,
         );
       }
-    } catch (e) {
-      _msg('Não foi possível conectar ao banco. Verifique a conexão.');
+    } catch (_) {
+      _msg('Nao foi possivel conectar ao banco. Verifique a conexao.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Bora marcar a próxima pelada?',
+                      'Bora marcar a proxima pelada?',
                       style: TextStyle(color: Colors.white, fontSize: 15),
                     ),
                   ],
@@ -99,8 +99,10 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Entrar',
-                      style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    'Entrar',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 4),
                   const Text(
                     'Acesse sua conta para jogar com a gente.',
@@ -125,9 +127,11 @@ class _LoginPageState extends State<LoginPage> {
                       labelText: 'Senha',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined),
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
@@ -138,7 +142,8 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const EsqueciSenhaPage()),
+                          builder: (_) => const EsqueciSenhaPage(),
+                        ),
                       ),
                       child: const Text('Esqueci minha senha'),
                     ),
@@ -164,7 +169,8 @@ class _LoginPageState extends State<LoginPage> {
                         : () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const CadastroPage()),
+                                builder: (_) => const CadastroPage(),
+                              ),
                             ),
                     child: const Text('Criar conta'),
                   ),

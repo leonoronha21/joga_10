@@ -39,8 +39,9 @@ class Estabelecimentos {
 
   bool get temLocalizacao => latitude != null && longitude != null;
 
-  String get enderecoResumo =>
-      [rua, numero, bairro, cidade].where((p) => p != null && p.isNotEmpty).join(', ');
+  String get enderecoResumo => [rua, numero, bairro, cidade]
+      .where((p) => p != null && p.isNotEmpty)
+      .join(', ');
 
   factory Estabelecimentos.fromRow(Map<String, dynamic> row) {
     return Estabelecimentos(

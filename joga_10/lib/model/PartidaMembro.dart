@@ -1,6 +1,6 @@
 import 'package:joga_10/db/row_utils.dart';
 
-/// Equipes possíveis numa partida.
+/// Equipes possiveis numa partida.
 class Equipe {
   static const time1 = 'TIME_1';
   static const time2 = 'TIME_2';
@@ -29,7 +29,12 @@ class PartidaMembro {
 
   bool get posicionado => posX != null && posY != null;
 
-  PartidaMembro copyWith({String? equipe, double? posX, double? posY, int? gols}) {
+  PartidaMembro copyWith({
+    String? equipe,
+    double? posX,
+    double? posY,
+    int? gols,
+  }) {
     return PartidaMembro(
       id: id,
       partidaId: partidaId,
