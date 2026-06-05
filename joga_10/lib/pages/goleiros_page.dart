@@ -67,7 +67,7 @@ class _GoleirosPageState extends State<GoleirosPage> {
                       color: AppColors.inkMuted, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               DropdownButtonFormField<Partida?>(
-                value: escolhida,
+                initialValue: escolhida,
                 isExpanded: true,
                 decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.sports_soccer)),

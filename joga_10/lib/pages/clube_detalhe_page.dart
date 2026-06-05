@@ -50,7 +50,7 @@ class _ClubeDetalhePageState extends State<ClubeDetalhePage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: posicao,
+                  initialValue: posicao,
                   decoration: const InputDecoration(labelText: 'Posição'),
                   items: _posicoes
                       .map((p) => DropdownMenuItem(value: p, child: Text(p)))

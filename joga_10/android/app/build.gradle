@@ -34,7 +34,8 @@ android {
 
     defaultConfig {
         applicationId "com.heroApp.joga_10.joga_10"
-        minSdkVersion flutter.minSdkVersion
+        // flutter_face_liveness exige minSdk 26
+        minSdkVersion 26
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

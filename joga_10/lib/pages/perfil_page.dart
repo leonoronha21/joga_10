@@ -1,12 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/app.dart';
 import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/pages/cartoes_page.dart';
 import 'package:joga_10/pages/dados_cadastrais_page.dart';
+import 'package:joga_10/pages/foto_perfil_page.dart';
 import 'package:joga_10/pages/goleiro_perfil_page.dart';
 import 'package:joga_10/pages/goleiros_page.dart';
 import 'package:joga_10/pages/parceiro_page.dart';
+import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/widgets/common.dart';
@@ -20,6 +24,34 @@ class PerfilPage extends StatefulWidget {
 
 class _PerfilPageState extends State<PerfilPage> {
   Usuario? get _usuario => Sessao.instance.atual;
+  Uint8List? _foto;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarFoto();
+  }
+
+  Future<void> _carregarFoto() async {
+    final id = _usuario?.id;
+    if (id == null) return;
+    try {
+      final foto = await UsuarioRepository().buscarFoto(id);
+      if (mounted) setState(() => _foto = foto);
+    } catch (_) {}
+  }
+
+  Future<void> _alterarFoto() async {
+    final id = _usuario?.id;
+    if (id == null) return;
+    final mudou = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FotoPerfilPage(usuarioId: id, fotoAtual: _foto),
+      ),
+    );
+    if (mudou == true) _carregarFoto();
+  }
 
   Future<void> _sair() async {
     final ok = await showDialog<bool>(
@@ -57,17 +89,40 @@ class _PerfilPageState extends State<PerfilPage> {
         GradientHeader(
           titulo: u?.nomeCompleto ?? 'Meu perfil',
           subtitulo: u?.email,
-          trailing: CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white,
-            child: Text(
-              (u?.primeiroNome.isNotEmpty ?? false)
-                  ? u!.primeiroNome[0].toUpperCase()
-                  : '?',
-              style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22),
+          trailing: GestureDetector(
+            onTap: _alterarFoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.white,
+                  backgroundImage: _foto != null ? MemoryImage(_foto!) : null,
+                  child: _foto == null
+                      ? Text(
+                          (u?.primeiroNome.isNotEmpty ?? false)
+                              ? u!.primeiroNome[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 22),
+                        )
+                      : null,
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.photo_camera,
+                        size: 12, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

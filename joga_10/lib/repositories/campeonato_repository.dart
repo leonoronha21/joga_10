@@ -4,6 +4,8 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/model/Clube.dart';
 import 'package:joga_10/model/ClubeJogador.dart';
 import 'package:joga_10/model/Confronto.dart';
+import 'package:joga_10/model/Liga.dart';
+import 'package:joga_10/model/LinhaClassificacao.dart';
 
 class CampeonatoRepository {
   Future<Pool> get _conn async => AppDatabase.instance.db;
@@ -108,19 +110,29 @@ class CampeonatoRepository {
     return r.map((e) => Confronto.fromRow(e.toColumnMap())).toList();
   }
 
+  Future<List<Confronto>> confrontosDaLiga(int ligaId) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named('$_selectConfronto WHERE cf.liga_id = @id ORDER BY cf.data_hora'),
+      parameters: {'id': ligaId},
+    );
+    return r.map((e) => Confronto.fromRow(e.toColumnMap())).toList();
+  }
+
   Future<int> criarConfronto({
     required int clubeCasaId,
     required int clubeVisitanteId,
     required DateTime dataHora,
     String tipo = 'AMISTOSO',
     String? local,
+    int? ligaId,
   }) async {
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
         INSERT INTO confronto
-          (clube_casa_id, clube_visitante_id, data_hora, tipo, local)
-        VALUES (@casa, @visitante, @data, @tipo, @local)
+          (clube_casa_id, clube_visitante_id, data_hora, tipo, local, liga_id)
+        VALUES (@casa, @visitante, @data, @tipo, @local, @liga)
         RETURNING id
       '''),
       parameters: {
@@ -129,6 +141,7 @@ class CampeonatoRepository {
         'data': dataHora,
         'tipo': tipo,
         'local': local,
+        'liga': ligaId,
       },
     );
     return r.first.toColumnMap()['id'] as int;
@@ -153,5 +166,109 @@ class CampeonatoRepository {
       Sql.named("UPDATE confronto SET status = 'CANCELADO' WHERE id = @id"),
       parameters: {'id': confrontoId},
     );
+  }
+
+  // ---- Ligas ----
+  Future<List<Liga>> listarLigas() async {
+    final conn = await _conn;
+    final r = await conn.execute('''
+      SELECT l.*, count(lc.clube_id) AS total_times
+      FROM liga l
+      LEFT JOIN liga_clube lc ON lc.liga_id = l.id
+      GROUP BY l.id
+      ORDER BY l.nome
+    ''');
+    return r.map((e) => Liga.fromRow(e.toColumnMap())).toList();
+  }
+
+  Future<int> criarLiga({required String nome, String? cidade}) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named(
+          'INSERT INTO liga (nome, cidade) VALUES (@nome, @cidade) RETURNING id'),
+      parameters: {'nome': nome.trim(), 'cidade': cidade?.trim()},
+    );
+    return r.first.toColumnMap()['id'] as int;
+  }
+
+  Future<List<Clube>> clubesDaLiga(int ligaId) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named('''
+        SELECT c.* FROM clube c
+        JOIN liga_clube lc ON lc.clube_id = c.id
+        WHERE lc.liga_id = @id
+        ORDER BY c.nome
+      '''),
+      parameters: {'id': ligaId},
+    );
+    return r.map((e) => Clube.fromRow(e.toColumnMap())).toList();
+  }
+
+  /// Clubes que ainda NÃO estão na liga (para adicionar existentes).
+  Future<List<Clube>> clubesForaDaLiga(int ligaId) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named('''
+        SELECT c.* FROM clube c
+        WHERE c.id NOT IN (SELECT clube_id FROM liga_clube WHERE liga_id = @id)
+        ORDER BY c.nome
+      '''),
+      parameters: {'id': ligaId},
+    );
+    return r.map((e) => Clube.fromRow(e.toColumnMap())).toList();
+  }
+
+  Future<void> adicionarClubeNaLiga(int ligaId, int clubeId) async {
+    final conn = await _conn;
+    await conn.execute(
+      Sql.named('''
+        INSERT INTO liga_clube (liga_id, clube_id) VALUES (@l, @c)
+        ON CONFLICT (liga_id, clube_id) DO NOTHING
+      '''),
+      parameters: {'l': ligaId, 'c': clubeId},
+    );
+  }
+
+  Future<void> removerClubeDaLiga(int ligaId, int clubeId) async {
+    final conn = await _conn;
+    await conn.execute(
+      Sql.named(
+          'DELETE FROM liga_clube WHERE liga_id = @l AND clube_id = @c'),
+      parameters: {'l': ligaId, 'c': clubeId},
+    );
+  }
+
+  /// Tabela de classificação da liga (a partir dos confrontos REALIZADOS).
+  Future<List<LinhaClassificacao>> classificacao(int ligaId) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named('''
+        WITH jogos AS (
+          SELECT clube_casa_id AS clube_id, placar_casa AS gp, placar_visitante AS gc
+          FROM confronto WHERE liga_id = @id AND status = 'REALIZADO'
+          UNION ALL
+          SELECT clube_visitante_id, placar_visitante, placar_casa
+          FROM confronto WHERE liga_id = @id AND status = 'REALIZADO'
+        )
+        SELECT c.id AS clube_id, c.nome, c.cor,
+          count(j.clube_id) AS j,
+          count(*) FILTER (WHERE j.gp > j.gc) AS v,
+          count(*) FILTER (WHERE j.gp = j.gc) AS e,
+          count(*) FILTER (WHERE j.gp < j.gc) AS d,
+          coalesce(sum(j.gp), 0) AS gp,
+          coalesce(sum(j.gc), 0) AS gc,
+          coalesce(sum(j.gp - j.gc), 0) AS sg,
+          coalesce(sum(CASE WHEN j.gp > j.gc THEN 3
+                            WHEN j.gp = j.gc THEN 1 ELSE 0 END), 0) AS pts
+        FROM clube c
+        JOIN liga_clube lc ON lc.clube_id = c.id AND lc.liga_id = @id
+        LEFT JOIN jogos j ON j.clube_id = c.id
+        GROUP BY c.id, c.nome, c.cor
+        ORDER BY pts DESC, sg DESC, gp DESC, c.nome
+      '''),
+      parameters: {'id': ligaId},
+    );
+    return r.map((e) => LinhaClassificacao.fromRow(e.toColumnMap())).toList();
   }
 }

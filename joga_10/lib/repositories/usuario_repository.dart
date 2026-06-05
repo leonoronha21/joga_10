@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:bcrypt/bcrypt.dart';
 import 'package:postgres/postgres.dart';
 
@@ -147,5 +149,34 @@ class UsuarioRepository {
       },
     );
     return result.affectedRows > 0;
+  }
+
+  /// Salva a foto de perfil (bytes) e a marca como verificada (liveness) ou não.
+  Future<void> salvarFoto(int id, Uint8List foto,
+      {bool verificada = false}) async {
+    final conn = await _conn;
+    await conn.execute(
+      Sql.named('''
+        UPDATE usuario SET foto = @foto, foto_verificada = @v WHERE id = @id
+      '''),
+      parameters: {
+        'id': id,
+        'foto': TypedValue(Type.byteArray, foto),
+        'v': verificada,
+      },
+    );
+  }
+
+  /// Busca apenas a foto de um usuário (evita carregar bytes nas listas).
+  Future<Uint8List?> buscarFoto(int id) async {
+    final conn = await _conn;
+    final r = await conn.execute(
+      Sql.named('SELECT foto FROM usuario WHERE id = @id'),
+      parameters: {'id': id},
+    );
+    if (r.isEmpty) return null;
+    final foto = r.first.toColumnMap()['foto'];
+    if (foto == null) return null;
+    return foto is Uint8List ? foto : Uint8List.fromList(List<int>.from(foto));
   }
 }

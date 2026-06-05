@@ -146,7 +146,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
               children: [
                 _label('Local'),
                 DropdownButtonFormField<Estabelecimentos>(
-                  value: _estabSel,
+                  initialValue: _estabSel,
                   isExpanded: true,
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.stadium_outlined)),
@@ -160,7 +160,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                 const SizedBox(height: 16),
                 _label('Quadra'),
                 DropdownButtonFormField<Quadras>(
-                  value: _quadraSel,
+                  initialValue: _quadraSel,
                   isExpanded: true,
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.sports_soccer)),
@@ -199,7 +199,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                 const SizedBox(height: 16),
                 _label('Duração'),
                 DropdownButtonFormField<String>(
-                  value: _duracao,
+                  initialValue: _duracao,
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.timer_outlined)),
                   items: const ['30min', '1h', '1h30', '2h']

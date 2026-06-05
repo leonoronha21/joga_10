@@ -110,7 +110,7 @@ class _GoleiroPerfilPageState extends State<GoleiroPerfilPage> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _disponivel,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   title: const Text('Disponível para contratação',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   onChanged: (v) => setState(() => _disponivel = v),

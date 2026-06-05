@@ -25,6 +25,8 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^13.0.1
   flutter_contacts: ^1.1.9+2
+  # Liveness facial (prova de vida) para a foto de perfil
+  flutter_face_liveness: ^3.2.0
 
 dev_dependencies:
   flutter_test:

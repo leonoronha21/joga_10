@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/model/Clube.dart';
+import 'package:joga_10/model/Liga.dart';
 import 'package:joga_10/repositories/campeonato_repository.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/format.dart';
 import 'package:joga_10/widgets/common.dart';
 
 class AgendarConfrontoPage extends StatefulWidget {
-  const AgendarConfrontoPage({super.key});
+  final Liga liga;
+  const AgendarConfrontoPage({super.key, required this.liga});
 
   @override
   State<AgendarConfrontoPage> createState() => _AgendarConfrontoPageState();
@@ -21,7 +23,7 @@ class _AgendarConfrontoPageState extends State<AgendarConfrontoPage> {
   Clube? _casa;
   Clube? _visitante;
   DateTime? _dataHora;
-  String _tipo = 'AMISTOSO';
+  String _tipo = 'OFICIAL';
   bool _carregando = true;
   bool _salvando = false;
 
@@ -39,7 +41,7 @@ class _AgendarConfrontoPageState extends State<AgendarConfrontoPage> {
 
   Future<void> _carregar() async {
     try {
-      final clubes = await _repo.listarClubes();
+      final clubes = await _repo.clubesDaLiga(widget.liga.id);
       if (mounted) {
         setState(() {
           _clubes = clubes;
@@ -88,6 +90,7 @@ class _AgendarConfrontoPageState extends State<AgendarConfrontoPage> {
         dataHora: _dataHora!,
         tipo: _tipo,
         local: _local.text.trim().isEmpty ? null : _local.text.trim(),
+        ligaId: widget.liga.id,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -185,7 +188,7 @@ class _AgendarConfrontoPageState extends State<AgendarConfrontoPage> {
 
   Widget _dropdownClube(Clube? value, ValueChanged<Clube?> onChanged) {
     return DropdownButtonFormField<Clube>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(prefixIcon: Icon(Icons.shield_outlined)),
       hint: const Text('Selecione o time'),

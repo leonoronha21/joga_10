@@ -130,7 +130,7 @@ class _CadastroCartaoPageState extends State<CadastroCartaoPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _bandeira,
+                    initialValue: _bandeira,
                     decoration: const InputDecoration(labelText: 'Bandeira'),
                     items: const ['Visa', 'Mastercard', 'Elo', 'Amex', 'Outro']
                         .map((b) =>
