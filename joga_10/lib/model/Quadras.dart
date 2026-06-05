@@ -1,9 +1,11 @@
+import 'package:joga_10/db/row_utils.dart';
+
 class Quadras {
   final int id;
   final int idEstabelecimento;
   final String nome;
   final String tipoQuadra;
-  final String preco;
+  final double preco;
 
   Quadras({
     required this.id,
@@ -13,13 +15,13 @@ class Quadras {
     required this.preco,
   });
 
-factory Quadras.fromJson(Map<String, dynamic> json) {
-  return Quadras(
-    id: json['id_quadra'] ?? 0,
-    idEstabelecimento: json['id_estabelecimento'] ?? 0,
-    nome: json['nome'] ?? "",
-    tipoQuadra: json['tipo_quadra'] ?? "",
-    preco: json['preco'] ?? "",
-  );
-}
+  factory Quadras.fromRow(Map<String, dynamic> row) {
+    return Quadras(
+      id: asInt(row['id']),
+      idEstabelecimento: asInt(row['id_estabelecimento']),
+      nome: (row['nome'] as String?) ?? '',
+      tipoQuadra: (row['tipo_quadra'] as String?) ?? '',
+      preco: asDouble(row['preco']),
+    );
+  }
 }

@@ -1,59 +1,36 @@
-class Cartao {
-  
-  late String cpf;
-  late String cvc;
-  late String bandeira;
-  late String numeroCartao;
-  late String nomeTitular;
-  late int idUser;
-  late String validade;
+import 'package:joga_10/db/row_utils.dart';
 
-  // Construtor
+/// Cartão do usuário.
+///
+/// SEGURANÇA (PCI-DSS / LGPD): guardamos apenas dados de exibição.
+/// Nunca armazenamos número completo, CVC ou CPF.
+class Cartao {
+  final int? id;
+  final int idUser;
+  final String nomeTitular;
+  final String? bandeira;
+  final String ultimos4;
+  final String validade; // MM/AAAA
+
   Cartao({
-   
-    required this.cpf,
-    required this.cvc,
-    required this.bandeira,
-    required this.numeroCartao,
-    required this.nomeTitular,
+    this.id,
     required this.idUser,
+    required this.nomeTitular,
+    this.bandeira,
+    required this.ultimos4,
     required this.validade,
   });
 
-  // Converte de JSON para Cartao
-  factory Cartao.fromJson(Map<String, dynamic> json) {
+  String get mascarado => '•••• •••• •••• $ultimos4';
+
+  factory Cartao.fromRow(Map<String, dynamic> row) {
     return Cartao(
-      
-      cpf: json['cpf'] as String,
-      cvc: json['cvc'] as String,
-      bandeira: json['bandeira'] as String,
-      numeroCartao: json['numero_cartao'] as String,
-      nomeTitular: json['nome_titular'] as String,
-      idUser: json['id_user'] as int,
-      validade: json['validade'] as String,
+      id: row['id'] == null ? null : asInt(row['id']),
+      idUser: asInt(row['id_user']),
+      nomeTitular: (row['nome_titular'] as String?) ?? '',
+      bandeira: row['bandeira'] as String?,
+      ultimos4: (row['ultimos4'] as String?)?.trim() ?? '',
+      validade: (row['validade'] as String?) ?? '',
     );
-  }
-
-  // Converter de  Cartao para JSON
-  Map<String, dynamic> toJson() {
-    return {
-  
-      'cpf': cpf,
-      'cvc': cvc,
-      'bandeira': bandeira,
-      'numero_cartao': numeroCartao,
-      'nome_titular': nomeTitular,
-      'id_user': idUser,
-      'validade': validade,
-    };
-  }
-   @override
-  String toString() {
-    // Mostrar apenas os 4 últimos dígitos
-    String ultimosDigitos = numeroCartao.length >= 4
-        ? '**** **** **** ' + numeroCartao.substring(numeroCartao.length - 4)
-        : numeroCartao;
-
-    return ultimosDigitos;
   }
 }

@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "C:\\Users\\leonardo.a\\Documents\\flutter\\packages\\flutter_tools\\gradle\\src\\main\\groovy\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\leonardo.a\\AppData\\Local\\Android\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\Users\\leonardo.a\\Documents\\Joga10_MVP\\Joga10_MVP\\joga_10\\joga_10\\android\\app\\.cxx\\Debug\\v126r3v6\\x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\leonardo.a\\AppData\\Local\\Android\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\Users\\leonardo.a\\Documents\\Joga10_MVP\\Joga10_MVP\\joga_10\\joga_10\\android\\app\\.cxx\\Debug\\v126r3v6\\x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

@@ -1,0 +1,2 @@
+C:/Users/leonardo.a/Documents/Joga10_MVP/Joga10_MVP/joga_10/joga_10/android/app/.cxx/Debug/v126r3v6/x86/CMakeFiles/edit_cache.dir
+C:/Users/leonardo.a/Documents/Joga10_MVP/Joga10_MVP/joga_10/joga_10/android/app/.cxx/Debug/v126r3v6/x86/CMakeFiles/rebuild_cache.dir

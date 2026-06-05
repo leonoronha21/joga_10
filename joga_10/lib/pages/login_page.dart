@@ -1,343 +1,179 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:joga_10/pages/criarUsuario.dart';
-import 'package:joga_10/pages/esqueciSenha.dart';
-import 'package:joga_10/pages/main_page.dart';
-import 'package:joga_10/pages/parceiro.dart';
-import 'package:http/http.dart' as http;
-import 'package:joga_10/service/UsuarioService.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/*
+import 'package:joga_10/pages/cadastro_page.dart';
+import 'package:joga_10/pages/esqueci_senha_page.dart';
+import 'package:joga_10/pages/home_shell.dart';
+import 'package:joga_10/repositories/usuario_repository.dart';
+import 'package:joga_10/services/sessao.dart';
+import 'package:joga_10/theme/app_colors.dart';
+
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
-}*/
-class LoginPage extends StatefulWidget {
-  @override
-  _LoginPageState createState() => _LoginPageState();
 }
 
-
 class _LoginPageState extends State<LoginPage> {
-  var emailController = TextEditingController(text: "");
-  var senhaController = TextEditingController(text: "");
-  bool isObscureText = true;
+  final _email = TextEditingController();
+  final _senha = TextEditingController();
+  final _repo = UsuarioRepository();
+  bool _obscure = true;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _senha.dispose();
+    super.dispose();
+  }
+
+  Future<void> _entrar() async {
+    if (_email.text.trim().isEmpty || _senha.text.isEmpty) {
+      _msg('Preencha email e senha.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final usuario = await _repo.login(_email.text, _senha.text);
+      if (!mounted) return;
+      if (usuario == null) {
+        _msg('Email ou senha inválidos.');
+      } else {
+        await Sessao.instance.salvar(usuario);
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeShell()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      _msg('Não foi possível conectar ao banco. Verifique a conexão.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _msg(String texto) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(texto)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: Color.fromRGBO(56, 25, 139, 0.267),
-        body: SingleChildScrollView(
-          child: ConstrainedBox(
-            
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                 Expanded(
-                  child: SizedBox(
-                    height: 50,
-                  ),
-                ),
-                Row(
+    return Scaffold(
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+                child: Column(
                   children: [
-                    Expanded(child: Container(   
-                      color: Color.fromRGBO(56, 25, 139, 0.267),)),
-                    Expanded(
-                      flex: 3,
-                       child: Image.asset(
-                          'lib/assets/img/Joga_transparente.png',
-                        ), 
-                      //child: Image.network(
-                     //   "https://static.vecteezy.com/ti/vetor-gratis/p1/2871329-design-dees-de-campo-verde-de-futebol-e-futebol-gratis-vetor.jpg",
-                    //  ),
+                    Image.asset(
+                      'lib/assets/img/Joga_transparente.png',
+                      height: 110,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.sports_soccer,
+                        color: Colors.white,
+                        size: 72,
+                      ),
                     ),
-                    Expanded(child: Container()),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Bora marcar a próxima pelada?',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
                   ],
                 ),
-            /*    const SizedBox(
-                  height: 20,
-                ),
-                const Text(
-                  "Joga 10",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),*/
-                const Text(
-                  "Faça seu login ou cadastre-se e jogue com a gente",
-                  style: TextStyle(fontSize: 14, color: Colors.white),
-                ),
-                const SizedBox(
-                  height: 40,
-                ),
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: TextField(
-                    controller: emailController,
-                    onChanged: (value) {
-                      debugPrint(value);
-                    },
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.only(top: 0),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                      hintText: "Email",
-                      hintStyle: TextStyle(color: Colors.white),
-                      prefixIcon: Icon(
-                        Icons.person,
-                        color: Color.fromARGB(255, 33, 150, 243),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 15,
-                ),
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: TextField(
-                    controller: senhaController,
-                    obscureText: isObscureText,
-                    onChanged: (value) {
-                      debugPrint(value);
-                    },
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.only(top: 0),
-                      enabledBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                      hintText: "Senha",
-                      hintStyle: const TextStyle(color: Colors.white),
-                      prefixIcon: const Icon(
-                        Icons.lock,
-                        color: Color.fromARGB(255, 33, 150, 243),
-                      ),
-                      suffixIcon: InkWell(
-                        onTap: () {
-                          setState(() {
-                            isObscureText = !isObscureText;
-                          });
-                        },
-                        child: Icon(
-                          isObscureText
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                             // Color.fromARGB(255, 33, 150, 243),
-                          color: const Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 30,
-                ),
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () {
-                       
-                        /*  if (emailController.text.trim() == "admin" &&
-                            senhaController.text.trim() == "user") {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainPage(userData: decodedToken),
-                            ),
-                          );
-                        } else {*/
-                           login();
-                        
-                        }  // Chama o método login quando o botão é pressionado                       
-     
-                      ,
-                      style: ButtonStyle(
-                        shape: MaterialStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        backgroundColor: MaterialStateProperty.all(
-                          const Color.fromARGB(255, 33, 150, 243),
-                        ),
-                      ),
-                      child: const Text(
-                        "ENTRAR",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(child: Container()),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => EsqueciSenhaPage()));
-                    },
-                    /*child: Text(
-                      "Esqueci minha senha",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),*/
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: () {
-                     
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => RegistrationPage()));
-                    },
-                    style: ButtonStyle(
-                      shape: MaterialStateProperty.all(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      backgroundColor: MaterialStateProperty.all(Colors.blue),
-                    ),
-                    child: const Text(
-                      "Criar conta",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 10,  // Adicione algum espaço entre os botões
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30),
-                  height: 30,
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: () {
-                     Navigator.push(context, MaterialPageRoute(builder: (context) => ParceiroPage()));
-                    },
-                    style: ButtonStyle(
-                      shape: MaterialStateProperty.all(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      backgroundColor: MaterialStateProperty.all(Colors.blue), // Personalize a cor conforme necessário
-                    ),
-                    child: const Text(
-                      "Torne-se Parceiro",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 60,
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Entrar',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Acesse sua conta para jogar com a gente.',
+                    style: TextStyle(color: AppColors.inkMuted),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.mail_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _senha,
+                    obscureText: _obscure,
+                    onSubmitted: (_) => _entrar(),
+                    decoration: InputDecoration(
+                      labelText: 'Senha',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscure
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const EsqueciSenhaPage()),
+                      ),
+                      child: const Text('Esqueci minha senha'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _loading ? null : _entrar,
+                    child: _loading
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.4,
+                            ),
+                          )
+                        : const Text('ENTRAR'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _loading
+                        ? null
+                        : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CadastroPage()),
+                            ),
+                    child: const Text('Criar conta'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-  
-  Future<void> login() async {
-  final url = Uri.parse('http://http://ec2-18-231-114-59.sa-east-1.compute.amazonaws.com:8080/login'); 
-
-  try {
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'email': emailController.text,
-        'password': senhaController.text,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      String token = data['token'];
-      print('Token recebido: $token');
-      
-      UsuarioService usuarioService = UsuarioService();
-      Map<String, dynamic> decodedToken = await usuarioService.decodeToken(token);
-      
-     
-    
-      print('Informações do usuário: ${decodedToken.toString()}');
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MainPage(userData: decodedToken),
-        ),
-      );
-    } else {
-      
-      print('Erro de autenticação: ${response.body}');
-    }
-  } catch (e) {
-   
-    print('Erro durante o login: $e');
-  }
-}
-
 }

@@ -1,8 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Necessária para a conexão direta com o PostgreSQL (sockets TCP) e mapas. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Localização: marcar o local do estabelecimento no mapa. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Contatos: convidar jogadores a partir da agenda. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <application
         android:label="Joga 10"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

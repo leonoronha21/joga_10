@@ -1,49 +1,65 @@
+import 'package:joga_10/db/row_utils.dart';
+
 class Estabelecimentos {
   final int id;
-  final String cnpj;
+  final String? cnpj;
   final String nome;
-  final String razaoSocial; // Correspondente a razao_social em Java
-  final String cidade;
-  final String cep;
-  final String rua;
-  final String bairro;
-  final String numero;
-  final String horaAbertura; // Correspondente a hora_abertura em Java
-  final String horaFechamento; // Correspondente a hora_fechamento em Java
-  final String telefone;
-  final String email;
+  final String? razaoSocial;
+  final String? cidade;
+  final String? cep;
+  final String? rua;
+  final String? bairro;
+  final String? numero;
+  final String? horaAbertura;
+  final String? horaFechamento;
+  final String? telefone;
+  final String? email;
+  final int status;
+  final double? latitude;
+  final double? longitude;
 
   Estabelecimentos({
     required this.id,
-    required this.cnpj,
+    this.cnpj,
     required this.nome,
-    required this.razaoSocial,
-    required this.cidade,
-    required this.cep,
-    required this.rua,
-    required this.bairro,
-    required this.numero,
-    required this.horaAbertura,
-    required this.horaFechamento,
-    required this.telefone,
-    required this.email,
+    this.razaoSocial,
+    this.cidade,
+    this.cep,
+    this.rua,
+    this.bairro,
+    this.numero,
+    this.horaAbertura,
+    this.horaFechamento,
+    this.telefone,
+    this.email,
+    this.status = 0,
+    this.latitude,
+    this.longitude,
   });
 
-  factory Estabelecimentos.fromJson(Map<String, dynamic> json) {
+  bool get temLocalizacao => latitude != null && longitude != null;
+
+  String get enderecoResumo =>
+      [rua, numero, bairro, cidade].where((p) => p != null && p.isNotEmpty).join(', ');
+
+  factory Estabelecimentos.fromRow(Map<String, dynamic> row) {
     return Estabelecimentos(
-      id: json['id'],
-      cnpj: json['cnpj'],
-      nome: json['nome'],
-      razaoSocial: json['razao_social'],
-      cidade: json['cidade'],
-      cep: json['cep'],
-      rua: json['rua'],
-      bairro: json['bairro'],
-      numero: json['numero'],
-      horaAbertura: json['hora_abertura'],
-      horaFechamento: json['hora_fechamento'],
-      telefone: json['telefone'],
-      email: json['email'],
+      id: row['id'] as int,
+      cnpj: row['cnpj'] as String?,
+      nome: row['nome'] as String,
+      razaoSocial: row['razao_social'] as String?,
+      cidade: row['cidade'] as String?,
+      cep: row['cep'] as String?,
+      rua: row['rua'] as String?,
+      bairro: row['bairro'] as String?,
+      numero: row['numero'] as String?,
+      horaAbertura: formatHora(row['hora_abertura']),
+      horaFechamento: formatHora(row['hora_fechamento']),
+      telefone: row['telefone'] as String?,
+      email: row['email'] as String?,
+      status: (row['status'] as int?) ?? 0,
+      latitude: row['latitude'] == null ? null : asDouble(row['latitude']),
+      longitude: row['longitude'] == null ? null : asDouble(row['longitude']),
     );
   }
 }

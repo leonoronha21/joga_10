@@ -1,31 +1,57 @@
+import 'package:joga_10/db/row_utils.dart';
+
+/// Equipes possíveis numa partida.
+class Equipe {
+  static const time1 = 'TIME_1';
+  static const time2 = 'TIME_2';
+}
+
 class PartidaMembro {
-  int id; // ajuste aqui
-  int idUser; // ajuste aqui
-  String equipe; // ajuste aqui
-  String nome; // ajuste aqui
+  final int? id;
+  final int? partidaId;
+  final int? idUser;
+  final String equipe;
+  final String nome;
+  final double? posX; // 0..1 (normalizado no campo)
+  final double? posY;
+  final int gols;
 
   PartidaMembro({
-    required this.id,
-    required this.idUser,
+    this.id,
+    this.partidaId,
+    this.idUser,
     required this.equipe,
     required this.nome,
+    this.posX,
+    this.posY,
+    this.gols = 0,
   });
 
-  factory PartidaMembro.fromJson(Map<String, dynamic> json) {
+  bool get posicionado => posX != null && posY != null;
+
+  PartidaMembro copyWith({String? equipe, double? posX, double? posY, int? gols}) {
     return PartidaMembro(
-      id: json['id'], // ajuste aqui
-      idUser: json['id_user'],
-      equipe: json['equipe'],
-      nome: json['nome'], // ajuste aqui
+      id: id,
+      partidaId: partidaId,
+      idUser: idUser,
+      equipe: equipe ?? this.equipe,
+      nome: nome,
+      posX: posX ?? this.posX,
+      posY: posY ?? this.posY,
+      gols: gols ?? this.gols,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id, // ajuste aqui
-      'id_user': idUser,
-      'equipe': equipe,
-      'nome': nome, // ajuste aqui
-    };
+  factory PartidaMembro.fromRow(Map<String, dynamic> row) {
+    return PartidaMembro(
+      id: row['id'] == null ? null : asInt(row['id']),
+      partidaId: row['partida_id'] == null ? null : asInt(row['partida_id']),
+      idUser: row['id_user'] == null ? null : asInt(row['id_user']),
+      equipe: (row['equipe'] as String?) ?? Equipe.time1,
+      nome: (row['nome'] as String?) ?? '',
+      posX: row['pos_x'] == null ? null : asDouble(row['pos_x']),
+      posY: row['pos_y'] == null ? null : asDouble(row['pos_y']),
+      gols: asInt(row['gols']),
+    );
   }
 }

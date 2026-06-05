@@ -36,12 +36,28 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  google_fonts: ^5.1.0
-  date_field: ^3.0.5
+  google_fonts: ^6.2.1
+  date_field: ^6.0.3+1
   flutter_masked_text2: ^0.9.1
   shared_preferences: ^2.0.12
   image_picker: ^0.8.3
   collection: ^1.15.0
+  # Conexão direta com o PostgreSQL (monólito, sem API)
+  postgres: ^3.5.6
+  # Hash de senha (compatível com o hash do seed)
+  bcrypt: ^1.1.3
+  # Formatação de datas/horas
+  intl: ^0.20.2
+  # Mapa de locais (OpenStreetMap, sem API key)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  # Localização (marcar local do estabelecimento)
+  geolocator: ^13.0.1
+  # Convidar jogadores pelos contatos do aparelho
+  flutter_contacts: ^1.1.9+2
+  # Liveness facial: flutter_face_liveness exige Flutter 3.35+/Dart 3.9
+  # (camera/ML Kit/TFLite). Reativar após atualizar o SDK do Flutter.
+  # flutter_face_liveness: ^3.2.0
 
 dev_dependencies:
   flutter_test:
