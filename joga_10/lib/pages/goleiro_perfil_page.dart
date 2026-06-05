@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/model/Contratacao.dart';
-import 'package:joga_10/model/Goleiro.dart';
 import 'package:joga_10/repositories/goleiro_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
