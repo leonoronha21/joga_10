@@ -1,15 +1,24 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Estabelecimentos.dart';
 
 class EstabelecimentoRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  EstabelecimentoRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   Future<List<Estabelecimentos>> listarTodos() async {
     final conn = await _conn;
-    final result = await conn.execute('SELECT * FROM estabelecimento ORDER BY nome');
-    return result.map((r) => Estabelecimentos.fromRow(r.toColumnMap())).toList();
+    final result =
+        await conn.execute('SELECT * FROM estabelecimento ORDER BY nome');
+    return result
+        .map((r) => Estabelecimentos.fromRow(r.toColumnMap()))
+        .toList();
   }
 
   Future<List<Estabelecimentos>> listarAtivos() async {
@@ -17,7 +26,9 @@ class EstabelecimentoRepository {
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE status = 1 ORDER BY nome',
     );
-    return result.map((r) => Estabelecimentos.fromRow(r.toColumnMap())).toList();
+    return result
+        .map((r) => Estabelecimentos.fromRow(r.toColumnMap()))
+        .toList();
   }
 
   /// Apenas estabelecimentos com latitude/longitude (para o mapa).
@@ -26,7 +37,9 @@ class EstabelecimentoRepository {
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY nome',
     );
-    return result.map((r) => Estabelecimentos.fromRow(r.toColumnMap())).toList();
+    return result
+        .map((r) => Estabelecimentos.fromRow(r.toColumnMap()))
+        .toList();
   }
 
   Future<int> salvar({

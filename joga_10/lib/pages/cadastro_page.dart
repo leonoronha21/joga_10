@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'package:joga_10/application/use_cases/cadastrar_usuario.dart';
+import 'package:joga_10/core/app_dependencies.dart';
+import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/pages/home_shell.dart';
-import 'package:joga_10/repositories/usuario_repository.dart';
-import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
+import 'package:joga_10/widgets/partida_link_redirect.dart';
 
 class CadastroPage extends StatefulWidget {
-  const CadastroPage({super.key});
+  final int? redirectPartidaId;
+
+  const CadastroPage({super.key, this.redirectPartidaId});
 
   @override
   State<CadastroPage> createState() => _CadastroPageState();
@@ -14,7 +18,6 @@ class CadastroPage extends StatefulWidget {
 
 class _CadastroPageState extends State<CadastroPage> {
   final _formKey = GlobalKey<FormState>();
-  final _repo = UsuarioRepository();
 
   final _primeiroNome = TextEditingController();
   final _segundoNome = TextEditingController();
@@ -53,46 +56,54 @@ class _CadastroPageState extends State<CadastroPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final resultado = await _repo.cadastrar(
-        primeiroNome: _primeiroNome.text,
-        segundoNome: _segundoNome.text,
-        email: _email.text,
-        senha: _senha.text,
-        cidade: _cidade.text,
-        bairro: _bairro.text,
-        rua: _rua.text,
-        complemento: _complemento.text,
-        contato: _contato.text,
-      );
+      final resultado = await AppDependenciesScope.of(context)
+          .cadastrarUsuario
+          .execute(CadastrarUsuarioCommand(
+            primeiroNome: _primeiroNome.text,
+            segundoNome: _segundoNome.text,
+            email: _email.text,
+            senha: _senha.text,
+            cidade: _cidade.text,
+            bairro: _bairro.text,
+            rua: _rua.text,
+            complemento: _complemento.text,
+            contato: _contato.text,
+          ));
       if (!mounted) return;
       switch (resultado) {
         case ResultadoCadastro.emailJaExiste:
-          _msg('Já existe uma conta com esse email.');
+          _msg('Ja existe uma conta com esse email.');
           break;
         case ResultadoCadastro.erro:
           _msg('Erro ao cadastrar. Tente novamente.');
           break;
         case ResultadoCadastro.sucesso:
-          final usuario = await _repo.login(_email.text, _senha.text);
-          if (!mounted) return;
-          if (usuario != null) {
-            await Sessao.instance.salvar(usuario);
-            if (!mounted) return;
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeShell()),
-              (route) => false,
-            );
-          } else {
-            Navigator.pop(context);
-          }
+          _concluirCadastro();
           break;
       }
-    } catch (e) {
-      _msg('Não foi possível conectar ao banco.');
+    } catch (_) {
+      _msg('Nao foi possivel conectar ao banco.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _concluirCadastro() {
+    final partidaPendente =
+        AppDependenciesScope.of(context).convites.consumirPartidaPendente();
+    final redirectId = widget.redirectPartidaId ?? partidaPendente;
+    final destino = redirectId == null
+        ? const HomeShell()
+        : PartidaLinkRedirect(
+            partidaId: redirectId,
+            child: const HomeShell(),
+          );
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => destino),
+      (route) => false,
+    );
   }
 
   void _msg(String t) =>
@@ -108,8 +119,12 @@ class _CadastroPageState extends State<CadastroPage> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             const _SecaoTitulo('Seus dados'),
-            _campo(_primeiroNome, 'Primeiro nome',
-                icon: Icons.person_outline, obrigatorio: true),
+            _campo(
+              _primeiroNome,
+              'Primeiro nome',
+              icon: Icons.person_outline,
+              obrigatorio: true,
+            ),
             _campo(_segundoNome, 'Sobrenome', icon: Icons.person_outline),
             _campo(
               _email,
@@ -118,12 +133,16 @@ class _CadastroPageState extends State<CadastroPage> {
               tipo: TextInputType.emailAddress,
               validador: (v) {
                 if (v == null || v.trim().isEmpty) return 'Informe o email';
-                if (!v.contains('@')) return 'Email inválido';
+                if (!v.contains('@')) return 'Email invalido';
                 return null;
               },
             ),
-            _campo(_contato, 'Contato (telefone)',
-                icon: Icons.phone_outlined, tipo: TextInputType.phone),
+            _campo(
+              _contato,
+              'Contato (telefone)',
+              icon: Icons.phone_outlined,
+              tipo: TextInputType.phone,
+            ),
             const SizedBox(height: 8),
             const _SecaoTitulo('Senha'),
             TextFormField(
@@ -133,14 +152,16 @@ class _CadastroPageState extends State<CadastroPage> {
                 labelText: 'Senha',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined),
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
               validator: (v) =>
-                  (v == null || v.length < 4) ? 'Mínimo de 4 caracteres' : null,
+                  (v == null || v.length < 4) ? 'Minimo de 4 caracteres' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -151,10 +172,10 @@ class _CadastroPageState extends State<CadastroPage> {
                 prefixIcon: Icon(Icons.lock_outline),
               ),
               validator: (v) =>
-                  v != _senha.text ? 'As senhas não conferem' : null,
+                  v != _senha.text ? 'As senhas nao conferem' : null,
             ),
             const SizedBox(height: 8),
-            const _SecaoTitulo('Endereço'),
+            const _SecaoTitulo('Endereco'),
             _campo(_cidade, 'Cidade', icon: Icons.location_city_outlined),
             _campo(_bairro, 'Bairro', icon: Icons.map_outlined),
             _campo(_rua, 'Rua', icon: Icons.signpost_outlined),
@@ -167,7 +188,9 @@ class _CadastroPageState extends State<CadastroPage> {
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.4),
+                        color: Colors.white,
+                        strokeWidth: 2.4,
+                      ),
                     )
                   : const Text('CADASTRAR'),
             ),
@@ -197,7 +220,7 @@ class _CadastroPageState extends State<CadastroPage> {
         validator: validador ??
             (obrigatorio
                 ? (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null
+                    (v == null || v.trim().isEmpty) ? 'Campo obrigatorio' : null
                 : null),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Clube.dart';
 import 'package:joga_10/model/ClubeJogador.dart';
 import 'package:joga_10/model/Confronto.dart';
@@ -8,7 +9,12 @@ import 'package:joga_10/model/Liga.dart';
 import 'package:joga_10/model/LinhaClassificacao.dart';
 
 class CampeonatoRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  CampeonatoRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   // ---- Clubes ----
   Future<List<Clube>> listarClubes() async {
@@ -113,7 +119,8 @@ class CampeonatoRepository {
   Future<List<Confronto>> confrontosDaLiga(int ligaId) async {
     final conn = await _conn;
     final r = await conn.execute(
-      Sql.named('$_selectConfronto WHERE cf.liga_id = @id ORDER BY cf.data_hora'),
+      Sql.named(
+          '$_selectConfronto WHERE cf.liga_id = @id ORDER BY cf.data_hora'),
       parameters: {'id': ligaId},
     );
     return r.map((e) => Confronto.fromRow(e.toColumnMap())).toList();
@@ -233,8 +240,7 @@ class CampeonatoRepository {
   Future<void> removerClubeDaLiga(int ligaId, int clubeId) async {
     final conn = await _conn;
     await conn.execute(
-      Sql.named(
-          'DELETE FROM liga_clube WHERE liga_id = @l AND clube_id = @c'),
+      Sql.named('DELETE FROM liga_clube WHERE liga_id = @l AND clube_id = @c'),
       parameters: {'l': ligaId, 'c': clubeId},
     );
   }

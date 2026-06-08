@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'package:joga_10/app.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/pages/assinatura_page.dart';
 import 'package:joga_10/pages/cartoes_page.dart';
 import 'package:joga_10/pages/dados_cadastrais_page.dart';
 import 'package:joga_10/pages/foto_perfil_page.dart';
 import 'package:joga_10/pages/goleiro_perfil_page.dart';
 import 'package:joga_10/pages/goleiros_page.dart';
+import 'package:joga_10/pages/minha_jornada_page.dart';
 import 'package:joga_10/pages/parceiro_page.dart';
 import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/services/sessao.dart';
@@ -147,6 +149,24 @@ class _PerfilPageState extends State<PerfilPage> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CartoesPage()),
+                ),
+              ),
+              _item(
+                icon: Icons.emoji_events_outlined,
+                titulo: 'Minha jornada',
+                subtitulo: 'Pontos, nivel e confiabilidade',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MinhaJornadaPage()),
+                ),
+              ),
+              _item(
+                icon: Icons.workspace_premium_outlined,
+                titulo: 'Joga10 Pro',
+                subtitulo: 'Recursos e assinatura',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AssinaturaPage()),
                 ),
               ),
               _item(

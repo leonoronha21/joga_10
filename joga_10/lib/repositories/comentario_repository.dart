@@ -1,10 +1,16 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Comentario.dart';
 
 class ComentarioRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  ComentarioRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   Future<List<Comentario>> listarPorPostagem(int postagemId) async {
     final conn = await _conn;

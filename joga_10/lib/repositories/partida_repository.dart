@@ -1,11 +1,18 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
+import 'package:joga_10/domain/contracts/partida_repository_contract.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 
-class PartidaRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+class PartidaRepository implements PartidaRepositoryContract {
+  final DatabaseProvider _database;
+
+  PartidaRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   static const String _selectBase = '''
     SELECT p.*, q.nome AS quadra_nome, e.nome AS estabelecimento_nome
@@ -15,6 +22,7 @@ class PartidaRepository {
   ''';
 
   /// Cria a partida e seus membros numa única transação.
+  @override
   Future<int> criar({
     int? idEstabelecimento,
     int? idQuadra,
@@ -93,32 +101,56 @@ class PartidaRepository {
     return partidas;
   }
 
+  @override
   Future<List<Partida>> listarTodas() async {
     final conn = await _conn;
     final rows = await conn.execute('$_selectBase ORDER BY p.data_hora DESC');
     return _montarComMembros(conn, rows);
   }
 
+  @override
   Future<List<Partida>> listarPorUsuario(int userId) async {
     final conn = await _conn;
     final rows = await conn.execute(
-      Sql.named('$_selectBase WHERE p.organizador_id = @uid ORDER BY p.data_hora DESC'),
+      Sql.named('''
+        $_selectBase
+        WHERE p.organizador_id = @uid
+           OR EXISTS (
+             SELECT 1 FROM partida_membro pm
+             WHERE pm.partida_id = p.id AND pm.id_user = @uid
+           )
+        ORDER BY p.data_hora DESC
+      '''),
       parameters: {'uid': userId},
     );
     return _montarComMembros(conn, rows);
   }
 
-  Future<List<Partida>> listarPorUsuarioEStatus(int userId, String status) async {
+  @override
+  Future<List<Partida>> listarPorUsuarioEStatus(
+      int userId, String status) async {
     final conn = await _conn;
     final rows = await conn.execute(
       Sql.named(
-        '$_selectBase WHERE p.organizador_id = @uid AND p.status = @status ORDER BY p.data_hora DESC',
+        '''
+        $_selectBase
+        WHERE p.status = @status
+          AND (
+            p.organizador_id = @uid
+            OR EXISTS (
+              SELECT 1 FROM partida_membro pm
+              WHERE pm.partida_id = p.id AND pm.id_user = @uid
+            )
+          )
+        ORDER BY p.data_hora DESC
+        ''',
       ),
       parameters: {'uid': userId, 'status': status},
     );
     return _montarComMembros(conn, rows);
   }
 
+  @override
   Future<Partida?> buscarPorId(int id) async {
     final conn = await _conn;
     final rows = await conn.execute(
@@ -131,6 +163,7 @@ class PartidaRepository {
     return Partida.fromRow(map, membros: membros);
   }
 
+  @override
   Future<bool> atualizarStatus(int id, String status) async {
     final conn = await _conn;
     final result = await conn.execute(
@@ -140,10 +173,12 @@ class PartidaRepository {
     return result.affectedRows > 0;
   }
 
+  @override
   Future<bool> finalizar(int id) =>
       atualizarStatus(id, PartidaStatus.finalizada);
 
   /// Finaliza a partida salvando o placar e os gols de cada jogador.
+  @override
   Future<void> finalizarComPlacar({
     required int partidaId,
     required int placarTime1,
@@ -178,6 +213,7 @@ class PartidaRepository {
 
   /// Salva a escalação: formato/formações da partida e a posição (e time)
   /// de cada membro, numa única transação.
+  @override
   Future<void> salvarEscalacao({
     required int partidaId,
     required String formato,
@@ -223,6 +259,7 @@ class PartidaRepository {
     });
   }
 
+  @override
   Future<void> adicionarMembro({
     required int partidaId,
     int? idUser,

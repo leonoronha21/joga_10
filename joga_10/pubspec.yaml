@@ -26,7 +26,10 @@ dependencies:
   geolocator: ^13.0.1
   flutter_contacts: ^1.1.9+2
   # Liveness facial (prova de vida) para a foto de perfil
-  flutter_face_liveness: ^3.2.0
+  flutter_face_liveness:
+    path: packages/flutter_face_liveness
+  app_links: ^7.1.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

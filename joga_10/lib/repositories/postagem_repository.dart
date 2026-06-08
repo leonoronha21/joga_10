@@ -3,10 +3,16 @@ import 'dart:typed_data';
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Postagem.dart';
 
 class PostagemRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  PostagemRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   /// Feed: posts do próprio usuário + dos amigos (status ACEITO).
   Future<List<Postagem>> listarFeed(int meuId) async {
@@ -58,7 +64,8 @@ class PostagemRepository {
     return r.first.toColumnMap()['id'] as int;
   }
 
-  Future<void> definirCurtida(int postagemId, int usuarioId, bool curtir) async {
+  Future<void> definirCurtida(
+      int postagemId, int usuarioId, bool curtir) async {
     final conn = await _conn;
     if (curtir) {
       await conn.execute(
