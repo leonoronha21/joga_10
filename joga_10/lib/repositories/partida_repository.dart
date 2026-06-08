@@ -1,11 +1,20 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
+import 'package:joga_10/domain/contracts/partida_repository_contract.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
+import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/sessao.dart';
 
-class PartidaRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+class PartidaRepository implements PartidaRepositoryContract {
+  final DatabaseProvider _database;
+
+  PartidaRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   static const String _selectBase = '''
     SELECT p.*, q.nome AS quadra_nome, e.nome AS estabelecimento_nome
@@ -15,6 +24,7 @@ class PartidaRepository {
   ''';
 
   /// Cria a partida e seus membros numa única transação.
+  @override
   Future<int> criar({
     int? idEstabelecimento,
     int? idQuadra,
@@ -25,6 +35,31 @@ class PartidaRepository {
     required double preco,
     List<PartidaMembro> membros = const [],
   }) async {
+    if (organizadorId == LocalDemoData.adminId) {
+      final demo = LocalDemoData.instance;
+      final quadra = demo.quadras.where((q) => q.id == idQuadra).firstOrNull;
+      final estab = demo.estabelecimentos
+          .where((e) => e.id == idEstabelecimento)
+          .firstOrNull;
+      final id = demo.novoId();
+      demo.partidas.insert(
+        0,
+        Partida(
+          id: id,
+          idEstabelecimento: idEstabelecimento,
+          idQuadra: idQuadra,
+          organizadorId: organizadorId,
+          duracao: duracao,
+          dataHora: dataHora,
+          status: status,
+          preco: preco,
+          membros: membros,
+          quadraNome: quadra?.nome,
+          estabelecimentoNome: estab?.nome,
+        ),
+      );
+      return id;
+    }
     final conn = await _conn;
     return conn.runTx((tx) async {
       final res = await tx.execute(
@@ -93,33 +128,73 @@ class PartidaRepository {
     return partidas;
   }
 
+  @override
   Future<List<Partida>> listarTodas() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.partidas);
+    }
     final conn = await _conn;
     final rows = await conn.execute('$_selectBase ORDER BY p.data_hora DESC');
     return _montarComMembros(conn, rows);
   }
 
+  @override
   Future<List<Partida>> listarPorUsuario(int userId) async {
+    if (userId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.partidas
+          .where((p) =>
+              p.organizadorId == userId ||
+              p.membros.any((m) => m.idUser == userId))
+          .toList();
+    }
     final conn = await _conn;
     final rows = await conn.execute(
-      Sql.named('$_selectBase WHERE p.organizador_id = @uid ORDER BY p.data_hora DESC'),
+      Sql.named('''
+        $_selectBase
+        WHERE p.organizador_id = @uid
+           OR EXISTS (
+             SELECT 1 FROM partida_membro pm
+             WHERE pm.partida_id = p.id AND pm.id_user = @uid
+           )
+        ORDER BY p.data_hora DESC
+      '''),
       parameters: {'uid': userId},
     );
     return _montarComMembros(conn, rows);
   }
 
-  Future<List<Partida>> listarPorUsuarioEStatus(int userId, String status) async {
+  @override
+  Future<List<Partida>> listarPorUsuarioEStatus(
+      int userId, String status) async {
+    if (userId == LocalDemoData.adminId) {
+      return (await listarPorUsuario(userId))
+          .where((p) => p.status == status)
+          .toList();
+    }
     final conn = await _conn;
     final rows = await conn.execute(
       Sql.named(
-        '$_selectBase WHERE p.organizador_id = @uid AND p.status = @status ORDER BY p.data_hora DESC',
+        '''
+        $_selectBase
+        WHERE p.status = @status
+          AND (
+            p.organizador_id = @uid
+            OR EXISTS (
+              SELECT 1 FROM partida_membro pm
+              WHERE pm.partida_id = p.id AND pm.id_user = @uid
+            )
+          )
+        ORDER BY p.data_hora DESC
+        ''',
       ),
       parameters: {'uid': userId, 'status': status},
     );
     return _montarComMembros(conn, rows);
   }
 
+  @override
   Future<Partida?> buscarPorId(int id) async {
+    if (id < 0) return LocalDemoData.instance.buscarPartida(id);
     final conn = await _conn;
     final rows = await conn.execute(
       Sql.named('$_selectBase WHERE p.id = @id'),
@@ -131,7 +206,16 @@ class PartidaRepository {
     return Partida.fromRow(map, membros: membros);
   }
 
+  @override
   Future<bool> atualizarStatus(int id, String status) async {
+    if (id < 0) {
+      final demo = LocalDemoData.instance;
+      final index = demo.partidas.indexWhere((p) => p.id == id);
+      if (index < 0) return false;
+      demo.partidas[index] =
+          demo.copiarPartida(demo.partidas[index], status: status);
+      return true;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('UPDATE partida SET status = @status WHERE id = @id'),
@@ -140,16 +224,44 @@ class PartidaRepository {
     return result.affectedRows > 0;
   }
 
+  @override
   Future<bool> finalizar(int id) =>
       atualizarStatus(id, PartidaStatus.finalizada);
 
   /// Finaliza a partida salvando o placar e os gols de cada jogador.
+  @override
   Future<void> finalizarComPlacar({
     required int partidaId,
     required int placarTime1,
     required int placarTime2,
     required Map<int, int> golsPorMembro, // id do membro -> gols
   }) async {
+    if (partidaId < 0) {
+      final demo = LocalDemoData.instance;
+      final index = demo.partidas.indexWhere((p) => p.id == partidaId);
+      if (index < 0) return;
+      final partida = demo.partidas[index];
+      final membros = partida.membros
+          .map((m) => PartidaMembro(
+                id: m.id,
+                partidaId: m.partidaId,
+                idUser: m.idUser,
+                equipe: m.equipe,
+                nome: m.nome,
+                posX: m.posX,
+                posY: m.posY,
+                gols: golsPorMembro[m.id] ?? m.gols,
+              ))
+          .toList();
+      demo.partidas[index] = demo.copiarPartida(
+        partida,
+        status: PartidaStatus.finalizada,
+        placarTime1: placarTime1,
+        placarTime2: placarTime2,
+        membros: membros,
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.runTx((tx) async {
       await tx.execute(
@@ -178,6 +290,7 @@ class PartidaRepository {
 
   /// Salva a escalação: formato/formações da partida e a posição (e time)
   /// de cada membro, numa única transação.
+  @override
   Future<void> salvarEscalacao({
     required int partidaId,
     required String formato,
@@ -185,6 +298,7 @@ class PartidaRepository {
     String? formacaoTime2,
     required List<PartidaMembro> membros,
   }) async {
+    if (partidaId < 0) return;
     final conn = await _conn;
     await conn.runTx((tx) async {
       await tx.execute(
@@ -223,12 +337,22 @@ class PartidaRepository {
     });
   }
 
+  @override
   Future<void> adicionarMembro({
     required int partidaId,
     int? idUser,
     required String equipe,
     required String nome,
   }) async {
+    if (partidaId < 0) {
+      LocalDemoData.instance.adicionarMembro(
+        partidaId: partidaId,
+        idUser: idUser,
+        equipe: equipe,
+        nome: nome,
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''

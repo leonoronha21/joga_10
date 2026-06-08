@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/pages/cadastro_page.dart';
 import 'package:joga_10/pages/esqueci_senha_page.dart';
 import 'package:joga_10/pages/home_shell.dart';
-import 'package:joga_10/repositories/usuario_repository.dart';
-import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
+import 'package:joga_10/widgets/partida_link_redirect.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final int? redirectPartidaId;
+
+  const LoginPage({super.key, this.redirectPartidaId});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -17,7 +19,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _email = TextEditingController();
   final _senha = TextEditingController();
-  final _repo = UsuarioRepository();
   bool _obscure = true;
   bool _loading = false;
 
@@ -29,25 +30,25 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _entrar() async {
-    if (_email.text.trim().isEmpty || _senha.text.isEmpty) {
-      _msg('Preencha email e senha.');
+    final login = _email.text.trim().toLowerCase();
+    final senha = _senha.text;
+
+    if (login.isEmpty || senha.isEmpty) {
+      _msg('Preencha usuario e senha.');
       return;
     }
+
     setState(() => _loading = true);
     try {
-      final usuario = await _repo.login(_email.text, _senha.text);
+      final dependencies = AppDependenciesScope.of(context);
+      final usuario =
+          await dependencies.autenticarUsuario.execute(login, senha);
       if (!mounted) return;
       if (usuario == null) {
-        _msg('Email ou senha invalidos.');
-      } else {
-        await Sessao.instance.salvar(usuario);
-        if (!mounted) return;
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeShell()),
-          (route) => false,
-        );
+        _msg('Usuario ou senha invalidos.');
+        return;
       }
+      _concluirLogin();
     } catch (_) {
       _msg('Nao foi possivel conectar ao banco. Verifique a conexao.');
     } finally {
@@ -55,13 +56,31 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _concluirLogin() {
+    final partidaPendente =
+        AppDependenciesScope.of(context).convites.consumirPartidaPendente();
+    final redirectId = widget.redirectPartidaId ?? partidaPendente;
+    final destino = redirectId == null
+        ? const HomeShell()
+        : PartidaLinkRedirect(
+            partidaId: redirectId,
+            child: const HomeShell(),
+          );
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => destino),
+      (route) => false,
+    );
+  }
+
   void _msg(String texto) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(texto)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final redirectId = widget.redirectPartidaId;
     return Scaffold(
       body: Column(
         children: [
@@ -104,9 +123,11 @@ class _LoginPageState extends State<LoginPage> {
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Acesse sua conta para jogar com a gente.',
-                    style: TextStyle(color: AppColors.inkMuted),
+                  Text(
+                    redirectId == null
+                        ? 'Acesse sua conta para jogar com a gente.'
+                        : 'Entre para acessar a partida #$redirectId.',
+                    style: const TextStyle(color: AppColors.inkMuted),
                   ),
                   const SizedBox(height: 24),
                   TextField(
@@ -114,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
-                      labelText: 'Email',
+                      labelText: 'Email ou usuario',
                       prefixIcon: Icon(Icons.mail_outline),
                     ),
                   ),
@@ -169,7 +190,9 @@ class _LoginPageState extends State<LoginPage> {
                         : () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const CadastroPage(),
+                                builder: (_) => CadastroPage(
+                                  redirectPartidaId: redirectId,
+                                ),
                               ),
                             ),
                     child: const Text('Criar conta'),

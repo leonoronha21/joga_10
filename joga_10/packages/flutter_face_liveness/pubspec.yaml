@@ -1,0 +1,40 @@
+name: flutter_face_liveness
+description: >-
+  Production-ready Flutter SDK for face detection, liveness verification, and anti-spoof protection using ML Kit and TensorFlow Lite.
+version: 3.2.0
+homepage: https://github.com/sanjaysharmajw/flutter_face_liveness
+repository: https://github.com/sanjaysharmajw/flutter_face_liveness
+issue_tracker: https://github.com/sanjaysharmajw/flutter_face_liveness/issues
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_mlkit_face_detection: ^0.13.2
+  google_mlkit_face_mesh_detection: ^0.4.2
+  camera: ^0.12.0+1
+  provider: ^6.1.5+1
+  permission_handler: ^12.0.1
+  tflite_flutter: ^0.12.1
+  shared_preferences: ^2.5.5
+  http: ^1.6.0
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.cerisetechsolutions.flutter_face_liveness
+        pluginClass: FlutterFaceLivenessPlugin
+      ios:
+        pluginClass: FlutterFaceLivenessPlugin
+
+  # No bundled model — downloaded automatically on first enableFaceId use

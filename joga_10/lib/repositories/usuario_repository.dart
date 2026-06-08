@@ -4,15 +4,22 @@ import 'package:bcrypt/bcrypt.dart';
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
+import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 /// Resultado possível de um cadastro.
-enum ResultadoCadastro { sucesso, emailJaExiste, erro }
+class UsuarioRepository implements UsuarioRepositoryContract {
+  final DatabaseProvider _database;
 
-class UsuarioRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  UsuarioRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   /// Autentica por email + senha. Retorna o [Usuario] ou null se inválido.
+  @override
   Future<Usuario?> login(String email, String senha) async {
     final conn = await _conn;
     final result = await conn.execute(
@@ -29,6 +36,7 @@ class UsuarioRepository {
   }
 
   /// Cadastra um novo usuário (senha guardada como hash BCrypt).
+  @override
   Future<ResultadoCadastro> cadastrar({
     required String primeiroNome,
     String? segundoNome,
@@ -82,18 +90,24 @@ class UsuarioRepository {
 
   /// Redefine a senha localmente (MVP sem servidor de email).
   /// Retorna true se o email existia e a senha foi atualizada.
+  @override
   Future<bool> redefinirSenha(String email, String novaSenha) async {
     final conn = await _conn;
     final hash = BCrypt.hashpw(novaSenha, BCrypt.gensalt());
     final result = await conn.execute(
-      Sql.named(
-          'UPDATE usuario SET senha_hash = @hash WHERE email = @email'),
+      Sql.named('UPDATE usuario SET senha_hash = @hash WHERE email = @email'),
       parameters: {'hash': hash, 'email': email.trim().toLowerCase()},
     );
     return result.affectedRows > 0;
   }
 
+  @override
   Future<Usuario?> buscarPorId(int id) async {
+    if (id <= 0) {
+      return LocalDemoData.instance.usuarios
+          .where((u) => u.id == id)
+          .firstOrNull;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('SELECT * FROM usuario WHERE id = @id'),
@@ -103,7 +117,11 @@ class UsuarioRepository {
     return Usuario.fromRow(result.first.toColumnMap());
   }
 
+  @override
   Future<Usuario?> buscarPorEmail(String email) async {
+    if (email.trim().toLowerCase() == 'admin') {
+      return LocalDemoData.instance.usuarios.first;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('SELECT * FROM usuario WHERE email = @email'),
@@ -114,6 +132,7 @@ class UsuarioRepository {
   }
 
   /// Atualiza os dados cadastrais (não mexe em email/senha aqui).
+  @override
   Future<bool> atualizar({
     required int id,
     required String primeiroNome,
@@ -124,6 +143,7 @@ class UsuarioRepository {
     String? complemento,
     String? contato,
   }) async {
+    if (id == LocalDemoData.adminId) return true;
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('''
@@ -152,8 +172,13 @@ class UsuarioRepository {
   }
 
   /// Salva a foto de perfil (bytes) e a marca como verificada (liveness) ou não.
+  @override
   Future<void> salvarFoto(int id, Uint8List foto,
       {bool verificada = false}) async {
+    if (id == LocalDemoData.adminId) {
+      LocalDemoData.instance.fotoAdmin = foto;
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -168,7 +193,9 @@ class UsuarioRepository {
   }
 
   /// Busca apenas a foto de um usuário (evita carregar bytes nas listas).
+  @override
   Future<Uint8List?> buscarFoto(int id) async {
+    if (id == LocalDemoData.adminId) return LocalDemoData.instance.fotoAdmin;
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('SELECT foto FROM usuario WHERE id = @id'),

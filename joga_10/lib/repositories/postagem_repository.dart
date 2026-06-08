@@ -3,13 +3,23 @@ import 'dart:typed_data';
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Postagem.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 class PostagemRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  PostagemRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   /// Feed: posts do próprio usuário + dos amigos (status ACEITO).
   Future<List<Postagem>> listarFeed(int meuId) async {
+    if (meuId == LocalDemoData.adminId) {
+      return List.unmodifiable(LocalDemoData.instance.postagens);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -41,6 +51,23 @@ class PostagemRepository {
     Uint8List? foto,
     int? partidaId,
   }) async {
+    if (autorId == LocalDemoData.adminId) {
+      final demo = LocalDemoData.instance;
+      final id = demo.novoId();
+      demo.postagens.insert(
+        0,
+        Postagem(
+          id: id,
+          autorId: autorId,
+          autorNome: 'Admin Local',
+          texto: texto,
+          foto: foto,
+          partidaId: partidaId,
+          criadoEm: DateTime.now(),
+        ),
+      );
+      return id;
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -58,7 +85,19 @@ class PostagemRepository {
     return r.first.toColumnMap()['id'] as int;
   }
 
-  Future<void> definirCurtida(int postagemId, int usuarioId, bool curtir) async {
+  Future<void> definirCurtida(
+      int postagemId, int usuarioId, bool curtir) async {
+    if (usuarioId == LocalDemoData.adminId && postagemId < 0) {
+      final demo = LocalDemoData.instance;
+      final index = demo.postagens.indexWhere((p) => p.id == postagemId);
+      if (index < 0) return;
+      final atual = demo.postagens[index];
+      demo.postagens[index] = atual.copyWith(
+        curtiuEu: curtir,
+        curtidas: atual.curtidas + (curtir ? 1 : -1),
+      );
+      return;
+    }
     final conn = await _conn;
     if (curtir) {
       await conn.execute(

@@ -1,18 +1,74 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/pages/home_shell.dart';
 import 'package:joga_10/pages/login_page.dart';
-import 'package:joga_10/repositories/usuario_repository.dart';
-import 'package:joga_10/services/sessao.dart';
+import 'package:joga_10/pages/partida_detalhe_page.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/theme/app_theme.dart';
+import 'package:joga_10/widgets/partida_link_redirect.dart';
 
-class JogaApp extends StatelessWidget {
-  const JogaApp({super.key});
+class JogaApp extends StatefulWidget {
+  final AppDependencies dependencies;
+
+  const JogaApp({super.key, required this.dependencies});
+
+  @override
+  State<JogaApp> createState() => _JogaAppState();
+}
+
+class _JogaAppState extends State<JogaApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<int>? _partidaLinkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final conviteService = widget.dependencies.convites;
+    _partidaLinkSub = conviteService.partidaLinks.listen(_abrirPartidaPorLink);
+    conviteService.iniciar();
+  }
+
+  @override
+  void dispose() {
+    _partidaLinkSub?.cancel();
+    unawaited(widget.dependencies.convites.dispose());
+    super.dispose();
+  }
+
+  Future<void> _abrirPartidaPorLink(int partidaId) async {
+    final conviteService = widget.dependencies.convites;
+    conviteService.guardarPartidaPendente(partidaId);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final nav = _navigatorKey.currentState;
+      if (nav == null) return;
+
+      if (await widget.dependencies.sessao.estaLogado()) {
+        conviteService.consumirPartidaPendente();
+        nav.push(
+          MaterialPageRoute(
+            builder: (_) => PartidaDetalhePage(partidaId: partidaId),
+          ),
+        );
+        return;
+      }
+
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => LoginPage(redirectPartidaId: partidaId),
+        ),
+        (route) => false,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Joga 10',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
@@ -21,7 +77,6 @@ class JogaApp extends StatelessWidget {
   }
 }
 
-/// Decide a tela inicial: restaura a sessão se existir, senão vai para o login.
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -30,33 +85,18 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late Future<bool> _futuro;
+  Future<bool>? _futuro;
 
   @override
-  void initState() {
-    super.initState();
-    _futuro = _restaurarSessao();
-  }
-
-  Future<bool> _restaurarSessao() async {
-    if (!await Sessao.instance.estaLogado()) return false;
-    try {
-      final id = await Sessao.instance.usuarioId;
-      if (id == null) return false;
-      final usuario = await UsuarioRepository().buscarPorId(id);
-      if (usuario == null) return false;
-      await Sessao.instance.salvar(usuario);
-      return true;
-    } catch (_) {
-      // Banco indisponível: cai para o login.
-      return false;
-    }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _futuro ??= AppDependenciesScope.of(context).restaurarSessao.execute();
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: _futuro,
+      future: _futuro!,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -66,7 +106,19 @@ class _AuthGateState extends State<AuthGate> {
             ),
           );
         }
-        return snapshot.data == true ? const HomeShell() : const LoginPage();
+
+        final partidaPendente =
+            AppDependenciesScope.of(context).convites.consumirPartidaPendente();
+        if (snapshot.data == true) {
+          if (partidaPendente != null) {
+            return PartidaLinkRedirect(
+              partidaId: partidaPendente,
+              child: const HomeShell(),
+            );
+          }
+          return const HomeShell();
+        }
+        return LoginPage(redirectPartidaId: partidaPendente);
       },
     );
   }

@@ -1,17 +1,28 @@
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
+import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Clube.dart';
 import 'package:joga_10/model/ClubeJogador.dart';
 import 'package:joga_10/model/Confronto.dart';
 import 'package:joga_10/model/Liga.dart';
 import 'package:joga_10/model/LinhaClassificacao.dart';
+import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/sessao.dart';
 
 class CampeonatoRepository {
-  Future<Pool> get _conn async => AppDatabase.instance.db;
+  final DatabaseProvider _database;
+
+  CampeonatoRepository({DatabaseProvider? database})
+      : _database = database ?? AppDatabase.instance;
+
+  Future<Pool> get _conn => _database.connection;
 
   // ---- Clubes ----
   Future<List<Clube>> listarClubes() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.clubes);
+    }
     final conn = await _conn;
     final r = await conn.execute('SELECT * FROM clube ORDER BY nome');
     return r.map((e) => Clube.fromRow(e.toColumnMap())).toList();
@@ -23,6 +34,18 @@ class CampeonatoRepository {
     String cor = '#1B3A6B',
     int? donoId,
   }) async {
+    if (Sessao.instance.isAdminLocal) {
+      final id = LocalDemoData.instance.novoId();
+      LocalDemoData.instance.clubes.add(
+        Clube(
+            id: id,
+            nome: nome.trim(),
+            cidade: cidade,
+            cor: cor,
+            donoId: donoId),
+      );
+      return id;
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -42,6 +65,11 @@ class CampeonatoRepository {
 
   // ---- Elenco do clube ----
   Future<List<ClubeJogador>> listarElenco(int clubeId) async {
+    if (clubeId < 0 || Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(
+        LocalDemoData.instance.elencos[clubeId] ?? const [],
+      );
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('SELECT * FROM clube_jogador WHERE clube_id = @id '
@@ -57,6 +85,20 @@ class CampeonatoRepository {
     String? posicao,
     int? numero,
   }) async {
+    if (clubeId < 0 || Sessao.instance.isAdminLocal) {
+      final demo = LocalDemoData.instance;
+      demo.elencos.putIfAbsent(clubeId, () => []);
+      demo.elencos[clubeId]!.add(
+        ClubeJogador(
+          id: demo.novoId(),
+          clubeId: clubeId,
+          nome: nome.trim(),
+          posicao: posicao,
+          numero: numero,
+        ),
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -73,6 +115,12 @@ class CampeonatoRepository {
   }
 
   Future<void> removerJogadorClube(int id) async {
+    if (id < 0) {
+      for (final elenco in LocalDemoData.instance.elencos.values) {
+        elenco.removeWhere((j) => j.id == id);
+      }
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('DELETE FROM clube_jogador WHERE id = @id'),
@@ -82,6 +130,7 @@ class CampeonatoRepository {
 
   /// Salva a posição (escalação) de cada jogador do clube.
   Future<void> salvarEscalacaoClube(List<ClubeJogador> jogadores) async {
+    if (jogadores.any((j) => j.id < 0)) return;
     final conn = await _conn;
     await conn.runTx((tx) async {
       for (final j in jogadores) {
@@ -105,15 +154,22 @@ class CampeonatoRepository {
   ''';
 
   Future<List<Confronto>> listarConfrontos() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.confrontos);
+    }
     final conn = await _conn;
     final r = await conn.execute('$_selectConfronto ORDER BY cf.data_hora');
     return r.map((e) => Confronto.fromRow(e.toColumnMap())).toList();
   }
 
   Future<List<Confronto>> confrontosDaLiga(int ligaId) async {
+    if (ligaId < 0 || Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.confrontos);
+    }
     final conn = await _conn;
     final r = await conn.execute(
-      Sql.named('$_selectConfronto WHERE cf.liga_id = @id ORDER BY cf.data_hora'),
+      Sql.named(
+          '$_selectConfronto WHERE cf.liga_id = @id ORDER BY cf.data_hora'),
       parameters: {'id': ligaId},
     );
     return r.map((e) => Confronto.fromRow(e.toColumnMap())).toList();
@@ -127,6 +183,29 @@ class CampeonatoRepository {
     String? local,
     int? ligaId,
   }) async {
+    if (Sessao.instance.isAdminLocal) {
+      final id = LocalDemoData.instance.novoId();
+      final casa =
+          LocalDemoData.instance.clubes.firstWhere((c) => c.id == clubeCasaId);
+      final visitante = LocalDemoData.instance.clubes
+          .firstWhere((c) => c.id == clubeVisitanteId);
+      LocalDemoData.instance.confrontos.add(
+        Confronto(
+          id: id,
+          clubeCasaId: clubeCasaId,
+          clubeCasaNome: casa.nome,
+          clubeCasaCor: casa.cor,
+          clubeVisitanteId: clubeVisitanteId,
+          clubeVisitanteNome: visitante.nome,
+          clubeVisitanteCor: visitante.cor,
+          dataHora: dataHora,
+          tipo: tipo,
+          local: local,
+          status: ConfrontoStatus.agendado,
+        ),
+      );
+      return id;
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -149,6 +228,7 @@ class CampeonatoRepository {
 
   Future<void> registrarPlacar(
       int confrontoId, int placarCasa, int placarVisitante) async {
+    if (confrontoId < 0) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -161,6 +241,7 @@ class CampeonatoRepository {
   }
 
   Future<void> cancelar(int confrontoId) async {
+    if (confrontoId < 0) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named("UPDATE confronto SET status = 'CANCELADO' WHERE id = @id"),
@@ -170,6 +251,9 @@ class CampeonatoRepository {
 
   // ---- Ligas ----
   Future<List<Liga>> listarLigas() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.ligas);
+    }
     final conn = await _conn;
     final r = await conn.execute('''
       SELECT l.*, count(lc.clube_id) AS total_times
@@ -182,6 +266,13 @@ class CampeonatoRepository {
   }
 
   Future<int> criarLiga({required String nome, String? cidade}) async {
+    if (Sessao.instance.isAdminLocal) {
+      final id = LocalDemoData.instance.novoId();
+      LocalDemoData.instance.ligas.add(
+        Liga(id: id, nome: nome.trim(), cidade: cidade, totalTimes: 0),
+      );
+      return id;
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named(
@@ -192,6 +283,9 @@ class CampeonatoRepository {
   }
 
   Future<List<Clube>> clubesDaLiga(int ligaId) async {
+    if (ligaId < 0 || Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.clubes);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -207,6 +301,7 @@ class CampeonatoRepository {
 
   /// Clubes que ainda NÃO estão na liga (para adicionar existentes).
   Future<List<Clube>> clubesForaDaLiga(int ligaId) async {
+    if (ligaId < 0 || Sessao.instance.isAdminLocal) return const [];
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -220,6 +315,7 @@ class CampeonatoRepository {
   }
 
   Future<void> adicionarClubeNaLiga(int ligaId, int clubeId) async {
+    if (ligaId < 0 || clubeId < 0 || Sessao.instance.isAdminLocal) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -231,16 +327,19 @@ class CampeonatoRepository {
   }
 
   Future<void> removerClubeDaLiga(int ligaId, int clubeId) async {
+    if (ligaId < 0 || clubeId < 0 || Sessao.instance.isAdminLocal) return;
     final conn = await _conn;
     await conn.execute(
-      Sql.named(
-          'DELETE FROM liga_clube WHERE liga_id = @l AND clube_id = @c'),
+      Sql.named('DELETE FROM liga_clube WHERE liga_id = @l AND clube_id = @c'),
       parameters: {'l': ligaId, 'c': clubeId},
     );
   }
 
   /// Tabela de classificação da liga (a partir dos confrontos REALIZADOS).
   Future<List<LinhaClassificacao>> classificacao(int ligaId) async {
+    if (ligaId < 0 || Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.classificacaoDemo);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''

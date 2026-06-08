@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'package:joga_10/application/use_cases/participar_da_partida.dart';
+import 'package:joga_10/core/app_dependencies.dart';
+import 'package:joga_10/domain/contracts/partida_convite_contract.dart';
+import 'package:joga_10/domain/contracts/partida_repository_contract.dart';
+import 'package:joga_10/domain/contracts/sessao_contract.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/pages/escalacao_page.dart';
 import 'package:joga_10/pages/finalizar_partida_page.dart';
-import 'package:joga_10/repositories/partida_repository.dart';
+import 'package:joga_10/pages/rateio_partida_page.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/contatos.dart';
 import 'package:joga_10/util/format.dart';
@@ -19,13 +25,35 @@ class PartidaDetalhePage extends StatefulWidget {
 }
 
 class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
-  final _repo = PartidaRepository();
-  late Future<Partida?> _futuro;
+  late final PartidaRepositoryContract _repo;
+  late final SessaoContract _sessao;
+  late final PartidaConviteContract _convites;
+  late final ParticiparDaPartida _participar;
+  Future<Partida?>? _futuro;
+  int? _meuId;
+  String? _meuNome;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_futuro != null) return;
+    final dependencies = AppDependenciesScope.of(context);
+    _repo = dependencies.partidas;
+    _sessao = dependencies.sessao;
+    _convites = dependencies.convites;
+    _participar = dependencies.participarDaPartida;
     _futuro = _repo.buscarPorId(widget.partidaId);
+    _carregarSessao();
+  }
+
+  Future<void> _carregarSessao() async {
+    final usuario = await _sessao.restaurarLocal();
+    final id = usuario?.id ?? await _sessao.usuarioId;
+    if (!mounted) return;
+    setState(() {
+      _meuId = id;
+      _meuNome = usuario?.nomeCompleto;
+    });
   }
 
   void _recarregar() => setState(() {
@@ -43,9 +71,59 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
       );
       _recarregar();
     } catch (_) {
-      _msg('Não foi possível adicionar o jogador.');
+      _msg('Nao foi possivel adicionar o jogador.');
     }
   }
+
+  Future<void> _entrarNaPartida(Partida partida) async {
+    try {
+      final participacao = await _participar.execute(partida);
+      if (!mounted) return;
+      final mensagem = switch (participacao.resultado) {
+        ResultadoParticipacao.requerLogin =>
+          'Entre na sua conta para participar da partida.',
+        ResultadoParticipacao.jaParticipa => 'Voce ja esta nessa partida.',
+        ResultadoParticipacao.timesCompletos => 'Os times ja estao completos.',
+        ResultadoParticipacao.sucesso => 'Voce entrou na partida.',
+      };
+      if (participacao.resultado != ResultadoParticipacao.sucesso) {
+        _msg(mensagem);
+        return;
+      }
+      setState(() {
+        _meuId = participacao.usuarioId;
+        _meuNome = participacao.nome;
+      });
+      _msg(mensagem);
+      _recarregar();
+    } catch (_) {
+      _msg('Nao foi possivel entrar na partida.');
+    }
+  }
+
+  Future<void> _convidarWhatsApp(Partida partida) async {
+    try {
+      final abriu = await _convites.abrirConviteWhatsApp(partida);
+      if (abriu) return;
+      throw Exception('WhatsApp indisponivel');
+    } catch (_) {
+      final link = _convites.linkDaPartida(partida.id).toString();
+      await Clipboard.setData(ClipboardData(text: link));
+      if (!mounted) return;
+      _msg('Nao foi possivel abrir o WhatsApp. Link copiado.');
+    }
+  }
+
+  String _nomeJogador(String? nomeSessao) {
+    final nome = (nomeSessao ?? _meuNome ?? '').trim();
+    return _participar.nomeJogador(_meuId, nome);
+  }
+
+  bool _jaEstouNaPartida(Partida partida, int? id, String nome) {
+    return _participar.jaParticipa(partida, id, nome);
+  }
+
+  bool _timesCompletos(Partida partida) => _participar.timesCompletos(partida);
 
   Future<String?> _perguntarNome() {
     final c = TextEditingController();
@@ -60,8 +138,7 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
               TextField(
                 controller: c,
                 autofocus: true,
-                decoration:
-                    const InputDecoration(labelText: 'Nome do jogador'),
+                decoration: const InputDecoration(labelText: 'Nome do jogador'),
               ),
               Align(
                 alignment: Alignment.centerLeft,
@@ -79,8 +156,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, c.text),
             child: const Text('Adicionar'),
@@ -106,7 +184,7 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Detalhes da partida')),
       body: FutureBuilder<Partida?>(
-        future: _futuro,
+        future: _futuro!,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const LoadingView();
@@ -115,11 +193,16 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
           if (p == null) {
             return const EmptyState(
               icone: Icons.error_outline,
-              titulo: 'Partida não encontrada',
+              titulo: 'Partida nao encontrada',
             );
           }
-          final podeFinalizar = p.status == PartidaStatus.agendada ||
+          final podeAlterar = p.status == PartidaStatus.agendada ||
               p.status == PartidaStatus.emAndamento;
+          final meuNome = _nomeJogador(null);
+          final jaEstou = _jaEstouNaPartida(p, _meuId, meuNome);
+          final podeEntrar =
+              podeAlterar && _meuId != null && !jaEstou && !_timesCompletos(p);
+
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -133,7 +216,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                           child: Text(
                             p.quadraNome ?? 'Partida #${p.id}',
                             style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w800),
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         StatusBadge(p.status),
@@ -141,16 +226,18 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                     ),
                     if (p.estabelecimentoNome != null) ...[
                       const SizedBox(height: 4),
-                      Text(p.estabelecimentoNome!,
-                          style: const TextStyle(color: AppColors.inkMuted)),
+                      Text(
+                        p.estabelecimentoNome!,
+                        style: const TextStyle(color: AppColors.inkMuted),
+                      ),
                     ],
                     const SizedBox(height: 16),
+                    _info(Icons.tag_outlined, 'ID da partida: ${p.id}'),
                     _info(Icons.event, formatarDataHora(p.dataHora)),
                     if (p.duracao != null && p.duracao!.isNotEmpty)
-                      _info(Icons.timer_outlined, 'Duração: ${p.duracao}'),
+                      _info(Icons.timer_outlined, 'Duracao: ${p.duracao}'),
                     if (p.preco > 0)
-                      _info(Icons.payments_outlined,
-                          formatarMoeda(p.preco)),
+                      _info(Icons.payments_outlined, formatarMoeda(p.preco)),
                     if (p.temPlacar) ...[
                       const SizedBox(height: 12),
                       const Divider(height: 1),
@@ -158,24 +245,34 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       Center(
                         child: Column(
                           children: [
-                            const Text('PLACAR FINAL',
-                                style: TextStyle(
-                                    color: AppColors.inkMuted,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5)),
+                            const Text(
+                              'PLACAR FINAL',
+                              style: TextStyle(
+                                color: AppColors.inkMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text('Time 1  ',
-                                    style: TextStyle(color: AppColors.inkMuted)),
-                                Text('${p.placarTime1}  x  ${p.placarTime2}',
-                                    style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800)),
-                                const Text('  Time 2',
-                                    style: TextStyle(color: AppColors.inkMuted)),
+                                const Text(
+                                  'Time 1  ',
+                                  style: TextStyle(color: AppColors.inkMuted),
+                                ),
+                                Text(
+                                  '${p.placarTime1}  x  ${p.placarTime2}',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const Text(
+                                  '  Time 2',
+                                  style: TextStyle(color: AppColors.inkMuted),
+                                ),
                               ],
                             ),
                           ],
@@ -185,6 +282,31 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => _convidarWhatsApp(p),
+                icon: const Icon(Icons.share_outlined),
+                label: const Text('Convidar via WhatsApp'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RateioPartidaPage(partida: p),
+                  ),
+                ),
+                icon: const Icon(Icons.account_balance_wallet_outlined),
+                label: const Text('Rateio e pagamentos'),
+              ),
+              if (podeEntrar) ...[
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () => _entrarNaPartida(p),
+                  icon: const Icon(Icons.login_outlined),
+                  label: const Text('Entrar nesta partida'),
+                ),
+              ],
               const SizedBox(height: 20),
               _Time(
                 titulo: 'Time 1',
@@ -205,21 +327,27 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   final mudou = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          EscalacaoPage(partida: p, readOnly: !podeFinalizar),
+                      builder: (_) => EscalacaoPage(
+                        partida: p,
+                        readOnly: !podeAlterar,
+                      ),
                     ),
                   );
                   if (mudou == true) _recarregar();
                 },
-                icon: Icon(podeFinalizar
-                    ? Icons.grid_view_rounded
-                    : Icons.visibility_outlined),
-                label: Text(podeFinalizar
-                    ? 'Escalar time (${p.formato})'
-                    : 'Ver escalação (${p.formato})'),
+                icon: Icon(
+                  podeAlterar
+                      ? Icons.grid_view_rounded
+                      : Icons.visibility_outlined,
+                ),
+                label: Text(
+                  podeAlterar
+                      ? 'Escalar time (${p.formato})'
+                      : 'Ver escalacao (${p.formato})',
+                ),
               ),
               const SizedBox(height: 12),
-              if (podeFinalizar)
+              if (podeAlterar)
                 OutlinedButton.icon(
                   onPressed: () => _finalizar(p),
                   icon: const Icon(Icons.flag_outlined),
@@ -238,7 +366,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
           children: [
             Icon(icon, size: 18, color: AppColors.inkMuted),
             const SizedBox(width: 8),
-            Text(texto, style: const TextStyle(color: AppColors.ink)),
+            Expanded(
+              child: Text(texto, style: const TextStyle(color: AppColors.ink)),
+            ),
           ],
         ),
       );
@@ -265,21 +395,32 @@ class _Time extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 10, height: 10,
-                  decoration: BoxDecoration(color: cor, shape: BoxShape.circle)),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
+              ),
               const SizedBox(width: 8),
-              Text(titulo,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(
+                titulo,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
               const Spacer(),
-              Text('${membros.length} jogador(es)',
-                  style: const TextStyle(color: AppColors.inkMuted)),
+              Text(
+                '${membros.length} jogador(es)',
+                style: const TextStyle(color: AppColors.inkMuted),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (membros.isEmpty)
-            const Text('Sem jogadores ainda.',
-                style: TextStyle(color: AppColors.inkMuted))
+            const Text(
+              'Sem jogadores ainda.',
+              style: TextStyle(color: AppColors.inkMuted),
+            )
           else
             ...membros.map(
               (m) => Padding(
@@ -292,17 +433,24 @@ class _Time extends StatelessWidget {
                       child: Text(
                         m.nome.isNotEmpty ? m.nome[0].toUpperCase() : '?',
                         style: TextStyle(
-                            color: cor, fontWeight: FontWeight.w700),
+                          color: cor,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(child: Text(m.nome)),
                     if (m.gols > 0) ...[
-                      const Icon(Icons.sports_soccer,
-                          size: 15, color: AppColors.inkMuted),
+                      const Icon(
+                        Icons.sports_soccer,
+                        size: 15,
+                        color: AppColors.inkMuted,
+                      ),
                       const SizedBox(width: 4),
-                      Text('${m.gols}',
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        '${m.gols}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ],
                   ],
                 ),
