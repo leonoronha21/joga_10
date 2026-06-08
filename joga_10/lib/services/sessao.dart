@@ -20,6 +20,8 @@ class Sessao implements SessaoContract {
   @override
   Usuario? get atual => _atual;
 
+  bool get isAdminLocal => _atual?.id == 0;
+
   @override
   Future<void> salvar(Usuario usuario) async {
     _atual = usuario;

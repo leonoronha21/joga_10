@@ -21,6 +21,9 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
   final _repo = UsuarioRepository();
   final _picker = ImagePicker();
 
+  static const _delayResultadoProvaDeVida = Duration(seconds: 5);
+  static const _delayTransicaoSelfie = Duration(seconds: 2);
+
   Uint8List? _previa;
   bool _verificada = false;
   bool _processando = false;
@@ -82,28 +85,43 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
     final ok = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Confirmação facial')),
-          body: FlutterFaceLiveness(
-            actions: const [
-              LivenessAction.blink,
-              LivenessAction.smile,
-            ],
-            config: const LivenessConfig(
-              randomizeActions: true,
-              enableAntiSpoof: true,
-              enableVideoReplayDetection: true,
-            ),
-            onSuccess: (result) => Navigator.pop(context, result.isSuccess),
-            onFailed: (reason) {
-              _ultimoErroVerificacao = reason;
-              Navigator.pop(context, false);
-            },
-          ),
+        builder: (_) => _ProvaDeVidaPage(
+          delayResultado: _delayResultadoProvaDeVida,
+          onFalha: (reason) => _ultimoErroVerificacao = reason,
         ),
       ),
     );
     return ok ?? false;
+  }
+
+  Future<void> _mostrarTransicaoSelfie() async {
+    if (!mounted) return;
+    final dialog = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Agora tire sua selfie'),
+        content: const Row(
+          children: [
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.6),
+            ),
+            SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Prova de vida confirmada. Estamos abrindo a câmera para a foto do perfil.',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await Future.delayed(_delayTransicaoSelfie);
+    if (mounted) Navigator.of(context).pop();
+    await dialog;
   }
 
   Future<void> _capturar() async {
@@ -119,6 +137,9 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
         );
         return;
       }
+
+      await _mostrarTransicaoSelfie();
+      if (!mounted) return;
 
       final img = await _picker.pickImage(
         source: ImageSource.camera,
@@ -241,6 +262,154 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
                 : const Text('SALVAR FOTO'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProvaDeVidaPage extends StatefulWidget {
+  final Duration delayResultado;
+  final ValueChanged<String> onFalha;
+
+  const _ProvaDeVidaPage({
+    required this.delayResultado,
+    required this.onFalha,
+  });
+
+  @override
+  State<_ProvaDeVidaPage> createState() => _ProvaDeVidaPageState();
+}
+
+class _ProvaDeVidaPageState extends State<_ProvaDeVidaPage> {
+  bool? _sucesso;
+  String? _mensagem;
+
+  bool get _mostrandoResultado => _sucesso != null;
+
+  Future<void> _finalizar({
+    required bool sucesso,
+    required String mensagem,
+  }) async {
+    if (_mostrandoResultado) return;
+    setState(() {
+      _sucesso = sucesso;
+      _mensagem = mensagem;
+    });
+    await Future.delayed(widget.delayResultado);
+    if (!mounted) return;
+    Navigator.pop(context, sucesso);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sucesso = _sucesso;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Confirmação facial')),
+      body: Stack(
+        children: [
+          FlutterFaceLiveness(
+            actions: const [
+              LivenessAction.blink,
+              LivenessAction.smile,
+            ],
+            config: const LivenessConfig(
+              randomizeActions: true,
+              enableAntiSpoof: true,
+              enableVideoReplayDetection: true,
+            ),
+            onSuccess: (result) {
+              _finalizar(
+                sucesso: result.isSuccess,
+                mensagem: result.isSuccess
+                    ? 'Prova de vida confirmada. Aguarde um momento para seguir para a selfie.'
+                    : 'Não foi possível confirmar a prova de vida.',
+              );
+            },
+            onFailed: (reason) {
+              widget.onFalha(reason);
+              _finalizar(
+                sucesso: false,
+                mensagem: reason.isNotEmpty
+                    ? reason
+                    : 'Não foi possível concluir a prova de vida.',
+              );
+            },
+          ),
+          if (sucesso != null)
+            _ResultadoProvaDeVida(
+              sucesso: sucesso,
+              mensagem: _mensagem ?? '',
+              segundos: widget.delayResultado.inSeconds,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultadoProvaDeVida extends StatelessWidget {
+  final bool sucesso;
+  final String mensagem;
+  final int segundos;
+
+  const _ResultadoProvaDeVida({
+    required this.sucesso,
+    required this.mensagem,
+    required this.segundos,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = sucesso ? AppColors.success : AppColors.danger;
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.72),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                sucesso
+                    ? Icons.verified_user_outlined
+                    : Icons.error_outline_rounded,
+                color: cor,
+                size: 54,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                sucesso ? 'Identidade confirmada' : 'Confirmação não concluída',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                mensagem,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.inkMuted),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Aguarde $segundos segundos...',
+                style: const TextStyle(
+                  color: AppColors.inkMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

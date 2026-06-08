@@ -3,6 +3,8 @@ import 'package:postgres/postgres.dart';
 import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Estabelecimentos.dart';
+import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/sessao.dart';
 
 class EstabelecimentoRepository {
   final DatabaseProvider _database;
@@ -13,6 +15,9 @@ class EstabelecimentoRepository {
   Future<Pool> get _conn => _database.connection;
 
   Future<List<Estabelecimentos>> listarTodos() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.estabelecimentos);
+    }
     final conn = await _conn;
     final result =
         await conn.execute('SELECT * FROM estabelecimento ORDER BY nome');
@@ -22,6 +27,11 @@ class EstabelecimentoRepository {
   }
 
   Future<List<Estabelecimentos>> listarAtivos() async {
+    if (Sessao.instance.isAdminLocal) {
+      return LocalDemoData.instance.estabelecimentos
+          .where((e) => e.status == 1)
+          .toList();
+    }
     final conn = await _conn;
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE status = 1 ORDER BY nome',
@@ -33,6 +43,11 @@ class EstabelecimentoRepository {
 
   /// Apenas estabelecimentos com latitude/longitude (para o mapa).
   Future<List<Estabelecimentos>> listarComLocalizacao() async {
+    if (Sessao.instance.isAdminLocal) {
+      return LocalDemoData.instance.estabelecimentos
+          .where((e) => e.temLocalizacao)
+          .toList();
+    }
     final conn = await _conn;
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY nome',
@@ -58,6 +73,29 @@ class EstabelecimentoRepository {
     double? latitude,
     double? longitude,
   }) async {
+    if (Sessao.instance.isAdminLocal) {
+      final id = LocalDemoData.instance.novoId();
+      LocalDemoData.instance.estabelecimentos.add(
+        Estabelecimentos(
+          id: id,
+          nome: nome,
+          cnpj: cnpj,
+          razaoSocial: razaoSocial,
+          cidade: cidade,
+          cep: cep,
+          rua: rua,
+          bairro: bairro,
+          numero: numero,
+          horaAbertura: horaAbertura,
+          horaFechamento: horaFechamento,
+          telefone: telefone,
+          email: email,
+          latitude: latitude,
+          longitude: longitude,
+        ),
+      );
+      return id;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('''

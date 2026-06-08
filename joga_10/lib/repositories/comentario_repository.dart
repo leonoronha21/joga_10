@@ -3,6 +3,7 @@ import 'package:postgres/postgres.dart';
 import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Comentario.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 class ComentarioRepository {
   final DatabaseProvider _database;
@@ -13,6 +14,11 @@ class ComentarioRepository {
   Future<Pool> get _conn => _database.connection;
 
   Future<List<Comentario>> listarPorPostagem(int postagemId) async {
+    if (postagemId < 0) {
+      return List.unmodifiable(
+        LocalDemoData.instance.comentarios[postagemId] ?? const [],
+      );
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -29,6 +35,20 @@ class ComentarioRepository {
   }
 
   Future<void> adicionar(int postagemId, int autorId, String texto) async {
+    if (postagemId < 0 && autorId == LocalDemoData.adminId) {
+      final demo = LocalDemoData.instance;
+      demo.comentarios.putIfAbsent(postagemId, () => []);
+      demo.comentarios[postagemId]!.add(
+        Comentario(
+          id: demo.novoId(),
+          autorId: autorId,
+          autorNome: 'Admin Local',
+          texto: texto.trim(),
+          criadoEm: DateTime.now(),
+        ),
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''

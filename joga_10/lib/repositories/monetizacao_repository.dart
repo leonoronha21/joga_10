@@ -6,6 +6,8 @@ import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/services/calculadora_rateio.dart';
 import 'package:joga_10/model/Monetizacao.dart';
 import 'package:joga_10/model/Rateio.dart';
+import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/sessao.dart';
 
 class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   final DatabaseProvider _database;
@@ -21,6 +23,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<PartidaRateio?> buscarRateioPorPartida(int partidaId) async {
+    if (partidaId < 0) return LocalDemoData.instance.rateios[partidaId];
     final conn = await _conn;
     final rateios = await conn.execute(
       Sql.named('SELECT * FROM partida_rateio WHERE partida_id = @id'),
@@ -51,6 +54,13 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
     required double valorQuadra,
     required double taxaPercentual,
   }) async {
+    if (partidaId < 0) {
+      return LocalDemoData.instance.criarRateio(
+        partidaId: partidaId,
+        valorQuadra: valorQuadra,
+        taxaPercentual: taxaPercentual,
+      );
+    }
     final conn = await _conn;
     final usuariosAfetados = <int>{};
 
@@ -159,6 +169,39 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> atualizarStatusCobranca(int cobrancaId, String status) async {
+    if (cobrancaId < 0) {
+      final demo = LocalDemoData.instance;
+      for (final entry in demo.rateios.entries) {
+        final index =
+            entry.value.cobrancas.indexWhere((c) => c.id == cobrancaId);
+        if (index < 0) continue;
+        final atual = entry.value;
+        final cobranca = atual.cobrancas[index];
+        final cobrancas = [...atual.cobrancas];
+        cobrancas[index] = RateioCobranca(
+          id: cobranca.id,
+          rateioId: cobranca.rateioId,
+          partidaMembroId: cobranca.partidaMembroId,
+          idUser: cobranca.idUser,
+          nome: cobranca.nome,
+          valorQuadra: cobranca.valorQuadra,
+          taxaServico: cobranca.taxaServico,
+          valorTotal: cobranca.valorTotal,
+          status: status,
+          pagoEm: status == CobrancaStatus.pago ? DateTime.now() : null,
+        );
+        demo.rateios[entry.key] = PartidaRateio(
+          id: atual.id,
+          partidaId: atual.partidaId,
+          valorQuadra: atual.valorQuadra,
+          taxaPercentual: atual.taxaPercentual,
+          status: atual.status,
+          cobrancas: cobrancas,
+        );
+        return;
+      }
+      return;
+    }
     final conn = await _conn;
     await conn.runTx((tx) async {
       final cobrancas = await tx.execute(
@@ -206,6 +249,22 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> fecharRateio(int rateioId) async {
+    if (rateioId < 0) {
+      final demo = LocalDemoData.instance;
+      final entry =
+          demo.rateios.entries.where((e) => e.value.id == rateioId).firstOrNull;
+      if (entry == null) return;
+      final atual = entry.value;
+      demo.rateios[entry.key] = PartidaRateio(
+        id: atual.id,
+        partidaId: atual.partidaId,
+        valorQuadra: atual.valorQuadra,
+        taxaPercentual: atual.taxaPercentual,
+        status: RateioStatus.fechado,
+        cobrancas: atual.cobrancas,
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -219,6 +278,9 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<GamificacaoUsuario> buscarGamificacao(int usuarioId) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.gamificacaoAdmin;
+    }
     final conn = await _conn;
     await conn.runTx((tx) => _sincronizarGamificacao(tx, usuarioId));
     final rows = await conn.execute(
@@ -282,6 +344,9 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<List<PlanoAssinatura>> listarPlanos() async {
+    if (Sessao.instance.isAdminLocal) {
+      return List.unmodifiable(LocalDemoData.instance.planos);
+    }
     final conn = await _conn;
     final rows = await conn.execute(
       'SELECT * FROM plano_assinatura WHERE ativo = true ORDER BY preco_mensal',
@@ -291,6 +356,9 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<AssinaturaUsuario?> buscarAssinatura(int usuarioId) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.assinatura;
+    }
     final conn = await _conn;
     final rows = await conn.execute(
       Sql.named('''
@@ -323,6 +391,20 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> ativarTestePro(int usuarioId) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      final demo = LocalDemoData.instance;
+      final pro = demo.planos.firstWhere((p) => p.codigo == 'PRO');
+      demo.assinatura = AssinaturaUsuario(
+        id: demo.novoId(),
+        usuarioId: usuarioId,
+        plano: pro,
+        status: 'ATIVA',
+        inicioEm: DateTime.now(),
+        fimEm: DateTime.now().add(const Duration(days: 30)),
+        origem: 'LOCAL_DEMO',
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''

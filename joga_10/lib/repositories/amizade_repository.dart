@@ -4,6 +4,7 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Amizade.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 class AmizadeRepository {
   final DatabaseProvider _database;
@@ -17,6 +18,9 @@ class AmizadeRepository {
       "trim(u.primeiro_nome || ' ' || coalesce(u.segundo_nome, ''))";
 
   Future<List<Usuario>> listarAmigos(int meuId) async {
+    if (meuId == LocalDemoData.adminId) {
+      return List.unmodifiable(LocalDemoData.instance.amigos);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -34,6 +38,9 @@ class AmizadeRepository {
 
   /// IDs dos amigos (para montar o feed).
   Future<List<int>> idsAmigos(int meuId) async {
+    if (meuId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.amigos.map((u) => u.id).toList();
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -49,6 +56,9 @@ class AmizadeRepository {
   }
 
   Future<List<PedidoAmizade>> listarPedidosRecebidos(int meuId) async {
+    if (meuId == LocalDemoData.adminId) {
+      return List.unmodifiable(LocalDemoData.instance.pedidos);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -65,6 +75,9 @@ class AmizadeRepository {
   }
 
   Future<List<UsuarioBusca>> buscarUsuarios(int meuId, String termo) async {
+    if (meuId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.buscarUsuarios(termo);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -105,6 +118,7 @@ class AmizadeRepository {
   }
 
   Future<void> enviarPedido(int meuId, int outroId) async {
+    if (meuId == LocalDemoData.adminId) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -118,6 +132,7 @@ class AmizadeRepository {
   }
 
   Future<void> responder(int amizadeId, bool aceitar) async {
+    if (amizadeId < 0) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('UPDATE amizade SET status = @s WHERE id = @id'),

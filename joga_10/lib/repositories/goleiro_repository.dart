@@ -4,6 +4,7 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Contratacao.dart';
 import 'package:joga_10/model/Goleiro.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 class GoleiroRepository {
   final DatabaseProvider _database;
@@ -22,6 +23,9 @@ class GoleiroRepository {
   ''';
 
   Future<Goleiro?> meuPerfil(int usuarioId) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      return LocalDemoData.instance.perfilGoleiroAdmin;
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('$_selectGoleiro WHERE g.usuario_id = @id'),
@@ -40,6 +44,19 @@ class GoleiroRepository {
     required bool disponivel,
     String? observacao,
   }) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      LocalDemoData.instance.perfilGoleiroAdmin = Goleiro(
+        id: -700,
+        usuarioId: usuarioId,
+        nome: 'Admin Local',
+        cidade: cidade,
+        precoJogo: preco,
+        nivel: nivel,
+        disponivel: disponivel,
+        observacao: observacao,
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -64,6 +81,9 @@ class GoleiroRepository {
   }
 
   Future<List<Goleiro>> listarDisponiveis(int excluirUsuarioId) async {
+    if (excluirUsuarioId == LocalDemoData.adminId) {
+      return List.unmodifiable(LocalDemoData.instance.goleiros);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('$_selectGoleiro '
@@ -80,6 +100,7 @@ class GoleiroRepository {
     required int solicitanteId,
     double? valor,
   }) async {
+    if (solicitanteId == LocalDemoData.adminId || goleiroId < 0) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -98,6 +119,9 @@ class GoleiroRepository {
 
   /// Contratações recebidas pelo goleiro logado.
   Future<List<Contratacao>> contratacoesRecebidas(int usuarioId) async {
+    if (usuarioId == LocalDemoData.adminId) {
+      return List.unmodifiable(LocalDemoData.instance.solicitacoesGoleiro);
+    }
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('''
@@ -117,6 +141,7 @@ class GoleiroRepository {
   }
 
   Future<void> responder(int contratacaoId, bool aceitar) async {
+    if (contratacaoId < 0) return;
     final conn = await _conn;
     await conn.execute(
       Sql.named('UPDATE contratacao_goleiro SET status = @s WHERE id = @id'),

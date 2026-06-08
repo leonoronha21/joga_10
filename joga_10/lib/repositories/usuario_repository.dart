@@ -7,6 +7,7 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/services/local_demo_data.dart';
 
 /// Resultado possível de um cadastro.
 class UsuarioRepository implements UsuarioRepositoryContract {
@@ -102,6 +103,11 @@ class UsuarioRepository implements UsuarioRepositoryContract {
 
   @override
   Future<Usuario?> buscarPorId(int id) async {
+    if (id <= 0) {
+      return LocalDemoData.instance.usuarios
+          .where((u) => u.id == id)
+          .firstOrNull;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('SELECT * FROM usuario WHERE id = @id'),
@@ -113,6 +119,9 @@ class UsuarioRepository implements UsuarioRepositoryContract {
 
   @override
   Future<Usuario?> buscarPorEmail(String email) async {
+    if (email.trim().toLowerCase() == 'admin') {
+      return LocalDemoData.instance.usuarios.first;
+    }
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('SELECT * FROM usuario WHERE email = @email'),
@@ -134,6 +143,7 @@ class UsuarioRepository implements UsuarioRepositoryContract {
     String? complemento,
     String? contato,
   }) async {
+    if (id == LocalDemoData.adminId) return true;
     final conn = await _conn;
     final result = await conn.execute(
       Sql.named('''
@@ -165,6 +175,10 @@ class UsuarioRepository implements UsuarioRepositoryContract {
   @override
   Future<void> salvarFoto(int id, Uint8List foto,
       {bool verificada = false}) async {
+    if (id == LocalDemoData.adminId) {
+      LocalDemoData.instance.fotoAdmin = foto;
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -181,6 +195,7 @@ class UsuarioRepository implements UsuarioRepositoryContract {
   /// Busca apenas a foto de um usuário (evita carregar bytes nas listas).
   @override
   Future<Uint8List?> buscarFoto(int id) async {
+    if (id == LocalDemoData.adminId) return LocalDemoData.instance.fotoAdmin;
     final conn = await _conn;
     final r = await conn.execute(
       Sql.named('SELECT foto FROM usuario WHERE id = @id'),
