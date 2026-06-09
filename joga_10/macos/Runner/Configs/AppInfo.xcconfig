@@ -8,7 +8,7 @@
 PRODUCT_NAME = joga_10
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.heroApp.joga10.joga10
+PRODUCT_BUNDLE_IDENTIFIER = br.com.joga10.app
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2023 com.heroApp.joga_10. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2023 Joga 10. All rights reserved.

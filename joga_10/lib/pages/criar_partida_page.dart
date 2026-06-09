@@ -152,8 +152,8 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                       prefixIcon: Icon(Icons.stadium_outlined)),
                   hint: const Text('Selecione o estabelecimento'),
                   items: _estabs
-                      .map((e) => DropdownMenuItem(
-                          value: e, child: Text(e.nome)))
+                      .map((e) =>
+                          DropdownMenuItem(value: e, child: Text(e.nome)))
                       .toList(),
                   onChanged: _onEstabChanged,
                 ),
@@ -170,8 +170,8 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                   items: _quadras
                       .map((q) => DropdownMenuItem(
                             value: q,
-                            child: Text(
-                                '${q.nome} • ${formatarMoeda(q.preco)}'),
+                            child:
+                                Text('${q.nome} • ${formatarMoeda(q.preco)}'),
                           ))
                       .toList(),
                   onChanged: (q) => setState(() => _quadraSel = q),
@@ -182,8 +182,8 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                   onTap: _escolherDataHora,
                   borderRadius: BorderRadius.circular(16),
                   child: InputDecorator(
-                    decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.event)),
+                    decoration:
+                        const InputDecoration(prefixIcon: Icon(Icons.event)),
                     child: Text(
                       _dataHora == null
                           ? 'Escolher data e hora'
@@ -203,8 +203,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.timer_outlined)),
                   items: const ['30min', '1h', '1h30', '2h']
-                      .map((d) =>
-                          DropdownMenuItem(value: d, child: Text(d)))
+                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                       .toList(),
                   onChanged: (d) => setState(() => _duracao = d ?? '1h'),
                 ),
@@ -240,14 +239,12 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                         ),
                       ),
                       title: Text(m.nome),
-                      subtitle: Text(m.equipe == Equipe.time1
-                          ? 'Time 1'
-                          : 'Time 2'),
+                      subtitle:
+                          Text(m.equipe == Equipe.time1 ? 'Time 1' : 'Time 2'),
                       trailing: IconButton(
-                        icon: const Icon(Icons.close,
-                            color: AppColors.inkMuted),
-                        onPressed: () =>
-                            setState(() => _membros.removeAt(i)),
+                        icon:
+                            const Icon(Icons.close, color: AppColors.inkMuted),
+                        onPressed: () => setState(() => _membros.removeAt(i)),
                       ),
                     ),
                   );
@@ -299,34 +296,42 @@ class _DialogJogadorState extends State<_DialogJogador> {
       title: const Text('Adicionar jogador'),
       content: SingleChildScrollView(
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _nome,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Nome'),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () async {
-                final nome = await escolherNomeDeContato();
-                if (nome != null) setState(() => _nome.text = nome);
-              },
-              icon: const Icon(Icons.contacts_outlined, size: 18),
-              label: const Text('Importar dos contatos'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nome,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Nome'),
             ),
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: Equipe.time1, label: Text('Time 1')),
-              ButtonSegment(value: Equipe.time2, label: Text('Time 2')),
-            ],
-            selected: {_equipe},
-            onSelectionChanged: (s) => setState(() => _equipe = s.first),
-          ),
-        ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final contato = await escolherContato();
+                  if (contato == null || !context.mounted) return;
+                  Navigator.pop(
+                    context,
+                    PartidaMembro(
+                      equipe: _equipe,
+                      nome: contato.nome,
+                      telefone: contato.telefone,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.contacts_outlined, size: 18),
+                label: const Text('Importar contato'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: Equipe.time1, label: Text('Time 1')),
+                ButtonSegment(value: Equipe.time2, label: Text('Time 2')),
+              ],
+              selected: {_equipe},
+              onSelectionChanged: (s) => setState(() => _equipe = s.first),
+            ),
+          ],
         ),
       ),
       actions: [

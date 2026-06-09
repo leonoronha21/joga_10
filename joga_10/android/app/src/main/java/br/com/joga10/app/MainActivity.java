@@ -1,4 +1,4 @@
-package com.heroApp.joga_10.joga_10;
+package br.com.joga10.app;
 
 import io.flutter.embedding.android.FlutterActivity;
 

@@ -209,7 +209,7 @@ class _ParceiroPageState extends State<ParceiroPage> {
                     TileLayer(
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.heroApp.joga_10.joga_10',
+                      userAgentPackageName: 'br.com.joga10.app',
                     ),
                     if (_local != null)
                       MarkerLayer(markers: [

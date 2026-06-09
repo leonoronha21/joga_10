@@ -13,7 +13,7 @@ abstract interface class PartidaConviteContract {
 
   String mensagemConvite(Partida partida);
 
-  Future<bool> abrirConviteWhatsApp(Partida partida);
+  Future<bool> abrirConviteWhatsApp(Partida partida, {String? telefone});
 
   int? partidaIdFromUri(Uri uri);
 

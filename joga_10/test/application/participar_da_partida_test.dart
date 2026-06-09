@@ -77,6 +77,7 @@ class _PartidaRepositoryFake implements PartidaRepositoryContract {
     int? idUser,
     required String equipe,
     required String nome,
+    String? telefone,
   }) async {
     equipeAdicionada = equipe;
     usuarioAdicionado = idUser;

@@ -30,6 +30,10 @@ dependencies:
     path: packages/flutter_face_liveness
   app_links: ^7.1.1
   url_launcher: ^6.3.2
+  firebase_core: ^4.10.0
+  firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
+  google_sign_in: 6.2.2
 
 dev_dependencies:
   flutter_test:

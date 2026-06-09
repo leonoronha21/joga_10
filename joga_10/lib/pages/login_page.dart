@@ -56,6 +56,34 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _entrarComGoogle() async {
+    setState(() => _loading = true);
+    try {
+      final dependencies = AppDependenciesScope.of(context);
+      final usuario = await dependencies.autenticacaoFirebase.entrarComGoogle();
+      if (usuario == null || !mounted) return;
+      await dependencies.sessao.salvar(usuario);
+      if (!mounted) return;
+      _concluirLogin();
+    } catch (erro) {
+      _msg(_mensagemErroGoogle(erro));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _mensagemErroGoogle(Object erro) {
+    final texto = erro.toString();
+    if (texto.contains('sign_in_failed') ||
+        texto.contains('ApiException: 10')) {
+      return 'Login Google ainda nao esta habilitado para este app no Firebase.';
+    }
+    if (texto.contains('permission-denied')) {
+      return 'Login concluido, mas o Firestore bloqueou o perfil.';
+    }
+    return 'Nao foi possivel entrar com Google.';
+  }
+
   void _concluirLogin() {
     final partidaPendente =
         AppDependenciesScope.of(context).convites.consumirPartidaPendente();
@@ -196,6 +224,12 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                     child: const Text('Criar conta'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _entrarComGoogle,
+                    icon: const Icon(Icons.account_circle_outlined),
+                    label: const Text('Continuar com Google'),
                   ),
                 ],
               ),

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
@@ -6,15 +7,22 @@ import 'package:joga_10/domain/contracts/partida_repository_contract.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/sessao.dart';
 
 class PartidaRepository implements PartidaRepositoryContract {
   final DatabaseProvider _database;
+  final FirebaseFirestore? _firestoreConfigurado;
 
-  PartidaRepository({DatabaseProvider? database})
-      : _database = database ?? AppDatabase.instance;
+  PartidaRepository({
+    DatabaseProvider? database,
+    FirebaseFirestore? firestore,
+  })  : _database = database ?? AppDatabase.instance,
+        _firestoreConfigurado = firestore;
 
   Future<Pool> get _conn => _database.connection;
+  FirebaseFirestore get _firestore =>
+      _firestoreConfigurado ?? FirebaseFirestore.instance;
 
   static const String _selectBase = '''
     SELECT p.*, q.nome AS quadra_nome, e.nome AS estabelecimento_nome
@@ -35,6 +43,18 @@ class PartidaRepository implements PartidaRepositoryContract {
     required double preco,
     List<PartidaMembro> membros = const [],
   }) async {
+    if (FirestoreCompatIds.habilitado) {
+      return _criarFirestore(
+        idEstabelecimento: idEstabelecimento,
+        idQuadra: idQuadra,
+        organizadorId: organizadorId,
+        duracao: duracao,
+        dataHora: dataHora,
+        status: status,
+        preco: preco,
+        membros: membros,
+      );
+    }
     if (organizadorId == LocalDemoData.adminId) {
       final demo = LocalDemoData.instance;
       final quadra = demo.quadras.where((q) => q.id == idQuadra).firstOrNull;
@@ -42,6 +62,21 @@ class PartidaRepository implements PartidaRepositoryContract {
           .where((e) => e.id == idEstabelecimento)
           .firstOrNull;
       final id = demo.novoId();
+      final membrosComId = membros
+          .map(
+            (membro) => PartidaMembro(
+              id: membro.id ?? demo.novoId(),
+              partidaId: id,
+              idUser: membro.idUser,
+              telefone: membro.telefone,
+              equipe: membro.equipe,
+              nome: membro.nome,
+              posX: membro.posX,
+              posY: membro.posY,
+              gols: membro.gols,
+            ),
+          )
+          .toList();
       demo.partidas.insert(
         0,
         Partida(
@@ -53,7 +88,7 @@ class PartidaRepository implements PartidaRepositoryContract {
           dataHora: dataHora,
           status: status,
           preco: preco,
-          membros: membros,
+          membros: membrosComId,
           quadraNome: quadra?.nome,
           estabelecimentoNome: estab?.nome,
         ),
@@ -130,6 +165,7 @@ class PartidaRepository implements PartidaRepositoryContract {
 
   @override
   Future<List<Partida>> listarTodas() async {
+    if (FirestoreCompatIds.habilitado) return _listarFirestore();
     if (Sessao.instance.isAdminLocal) {
       return List.unmodifiable(LocalDemoData.instance.partidas);
     }
@@ -140,6 +176,7 @@ class PartidaRepository implements PartidaRepositoryContract {
 
   @override
   Future<List<Partida>> listarPorUsuario(int userId) async {
+    if (FirestoreCompatIds.habilitado) return _listarFirestore();
     if (userId == LocalDemoData.adminId) {
       return LocalDemoData.instance.partidas
           .where((p) =>
@@ -166,6 +203,11 @@ class PartidaRepository implements PartidaRepositoryContract {
   @override
   Future<List<Partida>> listarPorUsuarioEStatus(
       int userId, String status) async {
+    if (FirestoreCompatIds.habilitado) {
+      return (await _listarFirestore())
+          .where((partida) => partida.status == status)
+          .toList();
+    }
     if (userId == LocalDemoData.adminId) {
       return (await listarPorUsuario(userId))
           .where((p) => p.status == status)
@@ -194,6 +236,7 @@ class PartidaRepository implements PartidaRepositoryContract {
 
   @override
   Future<Partida?> buscarPorId(int id) async {
+    if (FirestoreCompatIds.habilitado) return _buscarFirestore(id);
     if (id < 0) return LocalDemoData.instance.buscarPartida(id);
     final conn = await _conn;
     final rows = await conn.execute(
@@ -208,6 +251,15 @@ class PartidaRepository implements PartidaRepositoryContract {
 
   @override
   Future<bool> atualizarStatus(int id, String status) async {
+    if (FirestoreCompatIds.habilitado) {
+      final documento = await _documentoPartida(id);
+      if (documento == null) return false;
+      await documento.reference.update({
+        'status': status,
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      });
+      return true;
+    }
     if (id < 0) {
       final demo = LocalDemoData.instance;
       final index = demo.partidas.indexWhere((p) => p.id == id);
@@ -236,6 +288,14 @@ class PartidaRepository implements PartidaRepositoryContract {
     required int placarTime2,
     required Map<int, int> golsPorMembro, // id do membro -> gols
   }) async {
+    if (FirestoreCompatIds.habilitado) {
+      return _finalizarFirestore(
+        partidaId: partidaId,
+        placarTime1: placarTime1,
+        placarTime2: placarTime2,
+        golsPorMembro: golsPorMembro,
+      );
+    }
     if (partidaId < 0) {
       final demo = LocalDemoData.instance;
       final index = demo.partidas.indexWhere((p) => p.id == partidaId);
@@ -246,6 +306,7 @@ class PartidaRepository implements PartidaRepositoryContract {
                 id: m.id,
                 partidaId: m.partidaId,
                 idUser: m.idUser,
+                telefone: m.telefone,
                 equipe: m.equipe,
                 nome: m.nome,
                 posX: m.posX,
@@ -298,7 +359,55 @@ class PartidaRepository implements PartidaRepositoryContract {
     String? formacaoTime2,
     required List<PartidaMembro> membros,
   }) async {
-    if (partidaId < 0) return;
+    if (FirestoreCompatIds.habilitado) {
+      return _salvarEscalacaoFirestore(
+        partidaId: partidaId,
+        formato: formato,
+        formacaoTime1: formacaoTime1,
+        formacaoTime2: formacaoTime2,
+        membros: membros,
+      );
+    }
+    if (partidaId < 0) {
+      final demo = LocalDemoData.instance;
+      final index = demo.partidas.indexWhere((p) => p.id == partidaId);
+      if (index < 0) return;
+      final atual = demo.partidas[index];
+      final atualizados = membros.map((membro) {
+        final anterior =
+            atual.membros.where((item) => item.id == membro.id).firstOrNull;
+        return PartidaMembro(
+          id: membro.id,
+          partidaId: partidaId,
+          idUser: anterior?.idUser,
+          telefone: anterior?.telefone,
+          equipe: membro.equipe,
+          nome: membro.nome,
+          posX: membro.posX,
+          posY: membro.posY,
+          gols: anterior?.gols ?? 0,
+        );
+      }).toList();
+      demo.partidas[index] = Partida(
+        id: atual.id,
+        idEstabelecimento: atual.idEstabelecimento,
+        idQuadra: atual.idQuadra,
+        organizadorId: atual.organizadorId,
+        duracao: atual.duracao,
+        dataHora: atual.dataHora,
+        status: atual.status,
+        preco: atual.preco,
+        formato: formato,
+        formacaoTime1: formacaoTime1,
+        formacaoTime2: formacaoTime2,
+        placarTime1: atual.placarTime1,
+        placarTime2: atual.placarTime2,
+        membros: atualizados,
+        quadraNome: atual.quadraNome,
+        estabelecimentoNome: atual.estabelecimentoNome,
+      );
+      return;
+    }
     final conn = await _conn;
     await conn.runTx((tx) async {
       await tx.execute(
@@ -343,13 +452,24 @@ class PartidaRepository implements PartidaRepositoryContract {
     int? idUser,
     required String equipe,
     required String nome,
+    String? telefone,
   }) async {
+    if (FirestoreCompatIds.habilitado) {
+      return _adicionarMembroFirestore(
+        partidaId: partidaId,
+        idUser: idUser,
+        equipe: equipe,
+        nome: nome,
+        telefone: telefone,
+      );
+    }
     if (partidaId < 0) {
       LocalDemoData.instance.adicionarMembro(
         partidaId: partidaId,
         idUser: idUser,
         equipe: equipe,
         nome: nome,
+        telefone: telefone,
       );
       return;
     }
@@ -366,5 +486,276 @@ class PartidaRepository implements PartidaRepositoryContract {
         'nome': nome,
       },
     );
+  }
+
+  Future<int> _criarFirestore({
+    int? idEstabelecimento,
+    int? idQuadra,
+    required int organizadorId,
+    String? duracao,
+    required DateTime dataHora,
+    required String status,
+    required double preco,
+    required List<PartidaMembro> membros,
+  }) async {
+    final estabelecimentoId = idEstabelecimento == null
+        ? null
+        : FirestoreCompatIds.documento('estabelecimentos', idEstabelecimento);
+    final quadraId = idQuadra == null
+        ? null
+        : FirestoreCompatIds.documento('quadras', idQuadra);
+    final estabelecimento = estabelecimentoId == null
+        ? null
+        : await _firestore
+            .collection('estabelecimentos')
+            .doc(estabelecimentoId)
+            .get();
+    final quadra = quadraId == null
+        ? null
+        : await _firestore.collection('quadras').doc(quadraId).get();
+    final referencia = _firestore.collection('partidas').doc();
+    final batch = _firestore.batch();
+    batch.set(referencia, {
+      'organizadorId': FirestoreCompatIds.usuarioUid,
+      'estabelecimentoId': estabelecimentoId,
+      'estabelecimentoNome': estabelecimento?.data()?['nome'],
+      'quadraId': quadraId,
+      'quadraNome': quadra?.data()?['nome'],
+      'duracao': duracao,
+      'dataHora': Timestamp.fromDate(dataHora),
+      'status': status,
+      'preco': preco,
+      'formato': '5x5',
+      'ambiente': 'DEMO',
+      'criadoEm': FieldValue.serverTimestamp(),
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+    for (final membro in membros) {
+      final membroRef = referencia.collection('membros').doc();
+      batch.set(membroRef, {
+        'usuarioId':
+            membro.idUser == null ? null : FirestoreCompatIds.usuarioUid,
+        'nome': membro.nome,
+        'telefone': membro.telefone,
+        'equipe': membro.equipe,
+        'posX': membro.posX,
+        'posY': membro.posY,
+        'gols': membro.gols,
+        'ambiente': 'DEMO',
+      });
+    }
+    await batch.commit();
+    return FirestoreCompatIds.registrar('partidas', referencia.id);
+  }
+
+  Future<List<Partida>> _listarFirestore() async {
+    final documentos = await _firestore.collection('partidas').get();
+    final partidas = await Future.wait(documentos.docs.map(_partidaFirestore));
+    partidas.sort((a, b) => b.dataHora.compareTo(a.dataHora));
+    return partidas;
+  }
+
+  Future<Partida?> _buscarFirestore(int id) async {
+    final documento = await _documentoPartida(id);
+    return documento == null ? null : _partidaFirestore(documento);
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _documentoPartida(
+      int id) async {
+    final conhecido = FirestoreCompatIds.documento('partidas', id);
+    if (conhecido != null) {
+      final documento =
+          await _firestore.collection('partidas').doc(conhecido).get();
+      if (documento.exists) return documento;
+    }
+    final documentos = await _firestore.collection('partidas').get();
+    for (final documento in documentos.docs) {
+      if (FirestoreCompatIds.registrar('partidas', documento.id) == id) {
+        return documento;
+      }
+    }
+    return null;
+  }
+
+  Future<Partida> _partidaFirestore(
+    DocumentSnapshot<Map<String, dynamic>> documento,
+  ) async {
+    final dados = documento.data() ?? const <String, dynamic>{};
+    final partidaId = FirestoreCompatIds.registrar('partidas', documento.id);
+    final estabelecimentoId = dados['estabelecimentoId'] as String?;
+    final quadraId = dados['quadraId'] as String?;
+    final organizadorId = dados['organizadorId'] as String?;
+    final estabelecimento = estabelecimentoId == null
+        ? null
+        : await _firestore
+            .collection('estabelecimentos')
+            .doc(estabelecimentoId)
+            .get();
+    final quadra = quadraId == null
+        ? null
+        : await _firestore.collection('quadras').doc(quadraId).get();
+    final membros = await _membrosFirestore(documento.id, partidaId);
+    return Partida(
+      id: partidaId,
+      idEstabelecimento: estabelecimentoId == null
+          ? null
+          : FirestoreCompatIds.registrar('estabelecimentos', estabelecimentoId),
+      idQuadra: quadraId == null
+          ? null
+          : FirestoreCompatIds.registrar('quadras', quadraId),
+      organizadorId: organizadorId == FirestoreCompatIds.usuarioUid
+          ? (Sessao.instance.atual?.id ?? LocalDemoData.adminId)
+          : FirestoreCompatIds.registrar('usuarios', organizadorId ?? 'demo'),
+      duracao: dados['duracao'] as String?,
+      dataHora: _dataHora(dados['dataHora']),
+      status: (dados['status'] as String?) ?? PartidaStatus.agendada,
+      preco: (dados['preco'] as num?)?.toDouble() ?? 0,
+      formato: (dados['formato'] as String?) ?? '5x5',
+      formacaoTime1: dados['formacaoTime1'] as String?,
+      formacaoTime2: dados['formacaoTime2'] as String?,
+      placarTime1: (dados['placarTime1'] as num?)?.toInt(),
+      placarTime2: (dados['placarTime2'] as num?)?.toInt(),
+      membros: membros,
+      quadraNome: (quadra?.data()?['nome'] as String?) ??
+          dados['quadraNome'] as String?,
+      estabelecimentoNome: (estabelecimento?.data()?['nome'] as String?) ??
+          dados['estabelecimentoNome'] as String?,
+    );
+  }
+
+  Future<List<PartidaMembro>> _membrosFirestore(
+    String partidaDocumentoId,
+    int partidaId,
+  ) async {
+    final documentos = await _firestore
+        .collection('partidas')
+        .doc(partidaDocumentoId)
+        .collection('membros')
+        .get();
+    final registro = _registroMembros(partidaDocumentoId);
+    return documentos.docs.map((documento) {
+      final dados = documento.data();
+      final usuarioId = dados['usuarioId'] as String?;
+      return PartidaMembro(
+        id: FirestoreCompatIds.registrar(registro, documento.id),
+        partidaId: partidaId,
+        idUser: usuarioId == null
+            ? null
+            : usuarioId == FirestoreCompatIds.usuarioUid
+                ? Sessao.instance.atual?.id
+                : FirestoreCompatIds.registrar('usuarios', usuarioId),
+        telefone: dados['telefone'] as String?,
+        equipe: (dados['equipe'] as String?) ?? Equipe.time1,
+        nome: (dados['nome'] as String?) ?? '',
+        posX: (dados['posX'] as num?)?.toDouble(),
+        posY: (dados['posY'] as num?)?.toDouble(),
+        gols: (dados['gols'] as num?)?.toInt() ?? 0,
+      );
+    }).toList();
+  }
+
+  Future<void> _finalizarFirestore({
+    required int partidaId,
+    required int placarTime1,
+    required int placarTime2,
+    required Map<int, int> golsPorMembro,
+  }) async {
+    final partida = await _documentoPartida(partidaId);
+    if (partida == null) return;
+    final batch = _firestore.batch();
+    batch.update(partida.reference, {
+      'status': PartidaStatus.finalizada,
+      'placarTime1': placarTime1,
+      'placarTime2': placarTime2,
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+    for (final gol in golsPorMembro.entries) {
+      final membro = await _documentoMembro(partida.id, gol.key);
+      if (membro != null) batch.update(membro.reference, {'gols': gol.value});
+    }
+    await batch.commit();
+  }
+
+  Future<void> _salvarEscalacaoFirestore({
+    required int partidaId,
+    required String formato,
+    String? formacaoTime1,
+    String? formacaoTime2,
+    required List<PartidaMembro> membros,
+  }) async {
+    final partida = await _documentoPartida(partidaId);
+    if (partida == null) return;
+    final batch = _firestore.batch();
+    batch.update(partida.reference, {
+      'formato': formato,
+      'formacaoTime1': formacaoTime1,
+      'formacaoTime2': formacaoTime2,
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+    for (final membro in membros) {
+      if (membro.id == null) continue;
+      final documento = await _documentoMembro(partida.id, membro.id!);
+      if (documento == null) continue;
+      batch.update(documento.reference, {
+        'equipe': membro.equipe,
+        'posX': membro.posX,
+        'posY': membro.posY,
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<void> _adicionarMembroFirestore({
+    required int partidaId,
+    int? idUser,
+    required String equipe,
+    required String nome,
+    String? telefone,
+  }) async {
+    final partida = await _documentoPartida(partidaId);
+    if (partida == null) return;
+    await partida.reference.collection('membros').add({
+      'usuarioId': idUser == null ? null : FirestoreCompatIds.usuarioUid,
+      'nome': nome,
+      'telefone': telefone,
+      'equipe': equipe,
+      'gols': 0,
+      'ambiente': 'DEMO',
+      'criadoEm': FieldValue.serverTimestamp(),
+    });
+    await partida.reference
+        .update({'atualizadoEm': FieldValue.serverTimestamp()});
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _documentoMembro(
+    String partidaDocumentoId,
+    int membroId,
+  ) async {
+    final registro = _registroMembros(partidaDocumentoId);
+    final conhecido = FirestoreCompatIds.documento(registro, membroId);
+    final colecao = _firestore
+        .collection('partidas')
+        .doc(partidaDocumentoId)
+        .collection('membros');
+    if (conhecido != null) {
+      final documento = await colecao.doc(conhecido).get();
+      if (documento.exists) return documento;
+    }
+    final documentos = await colecao.get();
+    for (final documento in documentos.docs) {
+      if (FirestoreCompatIds.registrar(registro, documento.id) == membroId) {
+        return documento;
+      }
+    }
+    return null;
+  }
+
+  String _registroMembros(String partidaDocumentoId) =>
+      'partidas/$partidaDocumentoId/membros';
+
+  DateTime _dataHora(dynamic valor) {
+    if (valor is Timestamp) return valor.toDate();
+    if (valor is DateTime) return valor;
+    return DateTime.tryParse(valor?.toString() ?? '') ?? DateTime.now();
   }
 }

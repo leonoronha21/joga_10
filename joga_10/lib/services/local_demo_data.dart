@@ -526,6 +526,7 @@ class LocalDemoData {
     int? idUser,
     required String equipe,
     required String nome,
+    String? telefone,
   }) {
     final index = partidas.indexWhere((p) => p.id == partidaId);
     if (index < 0) return;
@@ -538,6 +539,7 @@ class LocalDemoData {
           id: novoId(),
           partidaId: partidaId,
           idUser: idUser,
+          telefone: telefone,
           equipe: equipe,
           nome: nome,
         ),

@@ -60,18 +60,36 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
         _futuro = _repo.buscarPorId(widget.partidaId);
       });
 
-  Future<void> _adicionarMembro(String equipe) async {
-    final nome = await _perguntarNome();
-    if (nome == null || nome.trim().isEmpty) return;
+  Future<void> _adicionarMembro(Partida partida, String equipe) async {
+    final jogador = await _perguntarJogador(equipe);
+    if (jogador == null || jogador.nome.trim().isEmpty) return;
     try {
       await _repo.adicionarMembro(
         partidaId: widget.partidaId,
         equipe: equipe,
-        nome: nome.trim(),
+        nome: jogador.nome.trim(),
+        telefone: jogador.telefone,
       );
       _recarregar();
     } catch (_) {
       _msg('Nao foi possivel adicionar o jogador.');
+      return;
+    }
+
+    if (jogador.telefone != null) {
+      try {
+        final abriu = await _convites.abrirConviteWhatsApp(
+          partida,
+          telefone: jogador.telefone,
+        );
+        if (!abriu) throw Exception('WhatsApp indisponivel');
+      } catch (_) {
+        final link = _convites.linkDaPartida(partida.id).toString();
+        await Clipboard.setData(ClipboardData(text: link));
+        if (!mounted) return;
+        _msg(
+            'Jogador adicionado. Nao foi possivel abrir o WhatsApp; link copiado.');
+      }
     }
   }
 
@@ -125,9 +143,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
 
   bool _timesCompletos(Partida partida) => _participar.timesCompletos(partida);
 
-  Future<String?> _perguntarNome() {
+  Future<PartidaMembro?> _perguntarJogador(String equipe) {
     final c = TextEditingController();
-    return showDialog<String>(
+    return showDialog<PartidaMembro>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Adicionar jogador'),
@@ -144,11 +162,19 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: () async {
-                    final nome = await escolherNomeDeContato();
-                    if (nome != null) c.text = nome;
+                    final contato = await escolherContato();
+                    if (contato == null || !mounted) return;
+                    Navigator.pop(
+                      context,
+                      PartidaMembro(
+                        equipe: equipe,
+                        nome: contato.nome,
+                        telefone: contato.telefone,
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.contacts_outlined, size: 18),
-                  label: const Text('Importar dos contatos'),
+                  label: const Text('Selecionar contato e convidar'),
                 ),
               ),
             ],
@@ -160,7 +186,10 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, c.text),
+            onPressed: () => Navigator.pop(
+              context,
+              PartidaMembro(equipe: equipe, nome: c.text.trim()),
+            ),
             child: const Text('Adicionar'),
           ),
         ],
@@ -312,14 +341,14 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                 titulo: 'Time 1',
                 cor: AppColors.info,
                 membros: p.time1,
-                onAdd: () => _adicionarMembro(Equipe.time1),
+                onAdd: () => _adicionarMembro(p, Equipe.time1),
               ),
               const SizedBox(height: 16),
               _Time(
                 titulo: 'Time 2',
                 cor: AppColors.accent,
                 membros: p.time2,
-                onAdd: () => _adicionarMembro(Equipe.time2),
+                onAdd: () => _adicionarMembro(p, Equipe.time2),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(

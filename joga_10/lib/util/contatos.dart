@@ -1,11 +1,39 @@
 import 'package:flutter_contacts/flutter_contacts.dart';
 
-/// Abre o seletor nativo de contatos e devolve o nome escolhido.
-/// Retorna null se a permissão for negada ou nada for selecionado.
-Future<String?> escolherNomeDeContato() async {
-  final ok = await FlutterContacts.requestPermission(readonly: true);
-  if (!ok) return null;
+class ContatoSelecionado {
+  final String nome;
+  final String? telefone;
+
+  const ContatoSelecionado({
+    required this.nome,
+    this.telefone,
+  });
+}
+
+Future<ContatoSelecionado?> escolherContato() async {
+  final permitido = await FlutterContacts.requestPermission(readonly: true);
+  if (!permitido) return null;
+
   final contato = await FlutterContacts.openExternalPick();
   final nome = contato?.displayName.trim();
-  return (nome == null || nome.isEmpty) ? null : nome;
+  if (contato == null || nome == null || nome.isEmpty) return null;
+
+  final completo = await FlutterContacts.getContact(
+    contato.id,
+    withProperties: true,
+    withThumbnail: false,
+    withPhoto: false,
+  );
+  String? telefone;
+  for (final item in completo?.phones ?? const []) {
+    final numero = item.number.trim();
+    if (numero.isNotEmpty) {
+      telefone = numero;
+      break;
+    }
+  }
+  return ContatoSelecionado(nome: nome, telefone: telefone);
 }
+
+Future<String?> escolherNomeDeContato() async =>
+    (await escolherContato())?.nome;

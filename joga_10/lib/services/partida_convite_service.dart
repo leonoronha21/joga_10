@@ -63,11 +63,19 @@ class PartidaConviteService implements PartidaConviteContract {
   }
 
   @override
-  Future<bool> abrirConviteWhatsApp(Partida partida) {
-    final uri = Uri.https('wa.me', '/', {
+  Future<bool> abrirConviteWhatsApp(Partida partida, {String? telefone}) {
+    final numero = _somenteDigitos(telefone);
+    final uri = Uri.https('wa.me', numero == null ? '/' : '/$numero', {
       'text': mensagemConvite(partida),
     });
     return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String? _somenteDigitos(String? telefone) {
+    if (telefone == null) return null;
+    final numero = telefone.replaceAll(RegExp(r'\D'), '');
+    if (numero.isEmpty) return null;
+    return numero.startsWith('55') ? numero : '55$numero';
   }
 
   @override

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/repositories/postagem_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_theme.dart';
@@ -43,6 +44,11 @@ class _CriarPostPageState extends State<CriarPostPage> {
   }
 
   void _menuFoto() {
+    final midia = AppDependenciesScope.of(context).midia;
+    if (!midia.uploadsHabilitados) {
+      _msg(midia.mensagemIndisponivel);
+      return;
+    }
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
@@ -138,8 +144,8 @@ class _CriarPostPageState extends State<CriarPostPage> {
           else
             OutlinedButton.icon(
               onPressed: _menuFoto,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Adicionar foto'),
+              icon: const Icon(Icons.cloud_off_outlined),
+              label: const Text('Fotos indisponiveis no Spark'),
             ),
           const SizedBox(height: 24),
           ElevatedButton(

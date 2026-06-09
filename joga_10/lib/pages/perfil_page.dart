@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/app.dart';
+import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/pages/assinatura_page.dart';
 import 'package:joga_10/pages/cartoes_page.dart';
@@ -46,6 +47,13 @@ class _PerfilPageState extends State<PerfilPage> {
   Future<void> _alterarFoto() async {
     final id = _usuario?.id;
     if (id == null) return;
+    final midia = AppDependenciesScope.of(context).midia;
+    if (!midia.uploadsHabilitados) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(midia.mensagemIndisponivel)),
+      );
+      return;
+    }
     final mudou = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -56,6 +64,7 @@ class _PerfilPageState extends State<PerfilPage> {
   }
 
   Future<void> _sair() async {
+    final dependencies = AppDependenciesScope.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -74,6 +83,9 @@ class _PerfilPageState extends State<PerfilPage> {
       ),
     );
     if (ok != true) return;
+    try {
+      await dependencies.autenticacaoFirebase.sair();
+    } catch (_) {}
     await Sessao.instance.sair();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -86,6 +98,12 @@ class _PerfilPageState extends State<PerfilPage> {
   @override
   Widget build(BuildContext context) {
     final u = _usuario;
+    final dependencies = AppDependenciesScope.of(context);
+    final fotosHabilitadas = dependencies.midia.uploadsHabilitados;
+    var firebaseAutenticado = false;
+    try {
+      firebaseAutenticado = dependencies.autenticacaoFirebase.autenticado;
+    } catch (_) {}
     return Column(
       children: [
         GradientHeader(
@@ -124,6 +142,16 @@ class _PerfilPageState extends State<PerfilPage> {
                         size: 12, color: Colors.white),
                   ),
                 ),
+                if (!fotosHabilitadas)
+                  const Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Icon(
+                      Icons.cloud_off_outlined,
+                      size: 15,
+                      color: Colors.white,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -132,6 +160,18 @@ class _PerfilPageState extends State<PerfilPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
             children: [
+              _item(
+                icon: firebaseAutenticado
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
+                titulo: firebaseAutenticado
+                    ? 'Firebase conectado'
+                    : 'Sessao demonstrativa local',
+                subtitulo: firebaseAutenticado
+                    ? 'Perfil, locais, quadras e partidas sincronizados'
+                    : 'Entre com Google para usar os dados do Firestore',
+                onTap: () {},
+              ),
               _item(
                 icon: Icons.person_outline,
                 titulo: 'Dados cadastrais',

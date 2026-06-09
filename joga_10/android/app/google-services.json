@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "422077123956",
+    "project_id": "joga10-ec65f",
+    "storage_bucket": "joga10-ec65f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:422077123956:android:692bc376d51d61b04ab021",
+        "android_client_info": {
+          "package_name": "br.com.joga10.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "422077123956-j5vdk100v18omr3aescc2q73t022dp2u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "br.com.joga10.app",
+            "certificate_hash": "083cfd126a25fb7e1214fcaa924209ffa1fe35a0"
+          }
+        },
+        {
+          "client_id": "422077123956-g2cugt559mb55q8pv9fs1ie497rpeph5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4DCR1Wqk077B8bYzP_49zcHvyt1CTrQM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "422077123956-g2cugt559mb55q8pv9fs1ie497rpeph5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "422077123956-sutj2fscksu2kcq93d92v4teoj3he39n.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "br.com.joga10.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

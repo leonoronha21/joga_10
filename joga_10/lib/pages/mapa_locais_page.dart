@@ -93,7 +93,7 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.heroApp.joga_10.joga_10',
+                userAgentPackageName: 'br.com.joga10.app',
               ),
               MarkerLayer(
                 markers: locais

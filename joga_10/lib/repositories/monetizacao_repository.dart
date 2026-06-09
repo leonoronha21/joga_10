@@ -3,21 +3,26 @@ import 'package:postgres/postgres.dart';
 import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
+import 'package:joga_10/domain/contracts/pagamento_provider_contract.dart';
 import 'package:joga_10/domain/services/calculadora_rateio.dart';
 import 'package:joga_10/model/Monetizacao.dart';
 import 'package:joga_10/model/Rateio.dart';
 import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/pagamento_demo_provider.dart';
 import 'package:joga_10/services/sessao.dart';
 
 class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   final DatabaseProvider _database;
   final CalculadoraRateio _calculadora;
+  final PagamentoProviderContract _pagamentos;
 
   MonetizacaoRepository({
     DatabaseProvider? database,
     CalculadoraRateio calculadora = const CalculadoraRateio(),
+    PagamentoProviderContract pagamentos = const PagamentoDemoProvider(),
   })  : _database = database ?? AppDatabase.instance,
-        _calculadora = calculadora;
+        _calculadora = calculadora,
+        _pagamentos = pagamentos;
 
   Future<Pool> get _conn => _database.connection;
 
@@ -177,6 +182,15 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
         if (index < 0) continue;
         final atual = entry.value;
         final cobranca = atual.cobrancas[index];
+        if (status == CobrancaStatus.pago) {
+          await _pagamentos.pagar(
+            SolicitacaoPagamento(
+              referenciaCobranca: cobranca.id.toString(),
+              valorCentavos: (cobranca.valorTotal * 100).round(),
+              descricao: 'Rateio da partida ${atual.partidaId}',
+            ),
+          );
+        }
         final cobrancas = [...atual.cobrancas];
         cobrancas[index] = RateioCobranca(
           id: cobranca.id,
@@ -203,12 +217,31 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       return;
     }
     final conn = await _conn;
+    ResultadoPagamento? pagamento;
+    if (status == CobrancaStatus.pago) {
+      final cobrancas = await conn.execute(
+        Sql.named('SELECT valor_total FROM rateio_cobranca WHERE id = @id'),
+        parameters: {'id': cobrancaId},
+      );
+      if (cobrancas.isEmpty) return;
+      final valorTotal =
+          (cobrancas.first.toColumnMap()['valor_total'] as num).toDouble();
+      pagamento = await _pagamentos.pagar(
+        SolicitacaoPagamento(
+          referenciaCobranca: cobrancaId.toString(),
+          valorCentavos: (valorTotal * 100).round(),
+          descricao: 'Rateio Joga10',
+        ),
+      );
+    }
+
     await conn.runTx((tx) async {
       final cobrancas = await tx.execute(
         Sql.named('SELECT id_user FROM rateio_cobranca WHERE id = @id'),
         parameters: {'id': cobrancaId},
       );
       if (cobrancas.isEmpty) return;
+      final cobranca = cobrancas.first.toColumnMap();
 
       await tx.execute(
         Sql.named('''
@@ -226,23 +259,20 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           Sql.named('''
             INSERT INTO pagamento_transacao
               (cobranca_id, provedor, referencia_externa, valor, status)
-            SELECT
-              id,
-              'LOCAL_DEMO',
-              concat(
-                'LOCAL-', id, '-',
-                floor(extract(epoch from clock_timestamp()) * 1000000)::bigint
-              ),
-              valor_total,
-              'APROVADO'
-            FROM rateio_cobranca
-            WHERE id = @id
+            SELECT id, @provedor, @referencia, valor_total, @status
+              FROM rateio_cobranca
+             WHERE id = @id
           '''),
-          parameters: {'id': cobrancaId},
+          parameters: {
+            'id': cobrancaId,
+            'provedor': pagamento!.provedor,
+            'referencia': pagamento.referenciaExterna,
+            'status': pagamento.status,
+          },
         );
       }
 
-      final idUser = cobrancas.first.toColumnMap()['id_user'] as int?;
+      final idUser = cobranca['id_user'] as int?;
       if (idUser != null) await _sincronizarGamificacao(tx, idUser);
     });
   }

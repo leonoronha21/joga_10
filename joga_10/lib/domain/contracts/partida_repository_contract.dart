@@ -45,5 +45,6 @@ abstract interface class PartidaRepositoryContract {
     int? idUser,
     required String equipe,
     required String nome,
+    String? telefone,
   });
 }
