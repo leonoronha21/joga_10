@@ -54,8 +54,16 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
     if (usuarioFirebase == null) return null;
 
     final usuario = _usuarioDemo(usuarioFirebase);
-    await _salvarPerfilFirestore(usuarioFirebase, usuario);
-    await _firestore.collection('configuracoes').doc('migracao-demo').get();
+    try {
+      await _salvarPerfilFirestore(usuarioFirebase, usuario);
+    } on FirebaseException catch (erro) {
+      // A autenticação já foi concluída. Uma indisponibilidade momentânea ou
+      // regra desatualizada do Firestore não deve impedir a entrada no app.
+      debugPrint(
+        'Login Google concluído; perfil Firestore não sincronizado: '
+        '${erro.code} ${erro.message}',
+      );
+    }
     return usuario;
   }
 
@@ -66,7 +74,9 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
     final referencia =
         _firestore.collection('usuarios').doc(usuarioFirebase.uid);
     final existente = await referencia.get();
-    await referencia.set(
+    final batch = _firestore.batch();
+    batch.set(
+      referencia,
       {
         'firebaseUid': usuarioFirebase.uid,
         'primeiroNome': usuario.primeiroNome,
@@ -83,6 +93,21 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
       },
       SetOptions(merge: true),
     );
+    batch.set(
+      _firestore.collection('usuariosPublicos').doc(usuarioFirebase.uid),
+      {
+        'primeiroNome': usuario.primeiroNome,
+        'segundoNome': usuario.segundoNome,
+        'nomeCompleto': usuario.nomeCompleto,
+        'fotoUrl': usuarioFirebase.photoURL,
+        'cidade': usuario.cidade,
+        'ativo': true,
+        'atualizadoEm': FieldValue.serverTimestamp(),
+        if (!existente.exists) 'criadoEm': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+    await batch.commit();
   }
 
   Usuario _usuarioDemo(firebase_auth.User usuarioFirebase) {

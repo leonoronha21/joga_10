@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'package:joga_10/repositories/estabelecimento_repository.dart';
+import 'package:joga_10/services/via_cep_service.dart';
 import 'package:joga_10/theme/app_colors.dart';
 
 class ParceiroPage extends StatefulWidget {
@@ -16,6 +16,7 @@ class ParceiroPage extends StatefulWidget {
 class _ParceiroPageState extends State<ParceiroPage> {
   final _formKey = GlobalKey<FormState>();
   final _repo = EstabelecimentoRepository();
+  final _viaCep = ViaCepService();
 
   final _nome = TextEditingController();
   final _cnpj = TextEditingController();
@@ -31,12 +32,14 @@ class _ParceiroPageState extends State<ParceiroPage> {
   final _fechamento = TextEditingController();
 
   bool _salvando = false;
+  bool _buscandoCep = false;
 
-  final _mapController = MapController();
+  GoogleMapController? _mapController;
   LatLng? _local;
   bool _obtendoGps = false;
 
-  static const LatLng _centroPadrao = LatLng(-30.0346, -51.2177); // Porto Alegre
+  static const LatLng _centroPadrao =
+      LatLng(-30.0346, -51.2177); // Porto Alegre
 
   Future<void> _usarMinhaLocalizacao() async {
     setState(() => _obtendoGps = true);
@@ -57,7 +60,9 @@ class _ParceiroPageState extends State<ParceiroPage> {
       final pos = await Geolocator.getCurrentPosition();
       final p = LatLng(pos.latitude, pos.longitude);
       setState(() => _local = p);
-      _mapController.move(p, 16);
+      await _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(CameraPosition(target: p, zoom: 16)),
+      );
     } catch (_) {
       _msgGps('Não foi possível obter a localização.');
     } finally {
@@ -65,12 +70,12 @@ class _ParceiroPageState extends State<ParceiroPage> {
     }
   }
 
-  void _msgGps(String t) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(t)));
+  void _msgGps(String t) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
 
   @override
   void dispose() {
-    _mapController.dispose();
+    _mapController?.dispose();
     for (final c in [
       _nome,
       _cnpj,
@@ -87,10 +92,34 @@ class _ParceiroPageState extends State<ParceiroPage> {
     ]) {
       c.dispose();
     }
+    _viaCep.dispose();
     super.dispose();
   }
 
   String? _vazioParaNull(String s) => s.trim().isEmpty ? null : s.trim();
+
+  Future<void> _buscarCep() async {
+    if (_buscandoCep) return;
+    setState(() => _buscandoCep = true);
+    try {
+      final endereco = await _viaCep.buscar(_cep.text);
+      if (!mounted) return;
+      if (endereco == null) {
+        _msgGps('CEP não encontrado.');
+        return;
+      }
+      setState(() {
+        _cep.text = endereco.cep;
+        _cidade.text = endereco.cidade;
+        _bairro.text = endereco.bairro;
+        _rua.text = endereco.logradouro;
+      });
+    } catch (_) {
+      if (mounted) _msgGps('Não foi possível consultar o CEP.');
+    } finally {
+      if (mounted) setState(() => _buscandoCep = false);
+    }
+  }
 
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
@@ -163,7 +192,24 @@ class _ParceiroPageState extends State<ParceiroPage> {
               ],
             ),
             _campo(_cidade, 'Cidade', icon: Icons.location_city_outlined),
-            _campo(_cep, 'CEP', icon: Icons.markunread_mailbox_outlined),
+            _campo(
+              _cep,
+              'CEP',
+              icon: Icons.markunread_mailbox_outlined,
+              tipo: TextInputType.number,
+              onEditingComplete: _buscarCep,
+              suffixIcon: IconButton(
+                onPressed: _buscandoCep ? null : _buscarCep,
+                icon: _buscandoCep
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search),
+                tooltip: 'Buscar CEP',
+              ),
+            ),
             _campo(_rua, 'Rua', icon: Icons.signpost_outlined),
             _campo(_bairro, 'Bairro', icon: Icons.map_outlined),
             _campo(_numero, 'Número', icon: Icons.numbers),
@@ -172,7 +218,8 @@ class _ParceiroPageState extends State<ParceiroPage> {
               children: [
                 const Text('Localização no mapa',
                     style: TextStyle(
-                        color: AppColors.inkMuted, fontWeight: FontWeight.w700)),
+                        color: AppColors.inkMuted,
+                        fontWeight: FontWeight.w700)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _obtendoGps ? null : _usarMinhaLocalizacao,
@@ -198,30 +245,24 @@ class _ParceiroPageState extends State<ParceiroPage> {
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 height: 220,
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _local ?? _centroPadrao,
-                    initialZoom: 12,
-                    onTap: (_, point) => setState(() => _local = point),
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _local ?? _centroPadrao,
+                    zoom: 12,
                   ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'br.com.joga10.app',
-                    ),
-                    if (_local != null)
-                      MarkerLayer(markers: [
-                        Marker(
-                          point: _local!,
-                          width: 44,
-                          height: 44,
-                          child: const Icon(Icons.location_on,
-                              color: AppColors.primary, size: 44),
-                        ),
-                      ]),
-                  ],
+                  onMapCreated: (controller) => _mapController = controller,
+                  onTap: (point) => setState(() => _local = point),
+                  mapToolbarEnabled: false,
+                  zoomControlsEnabled: false,
+                  myLocationButtonEnabled: false,
+                  markers: _local == null
+                      ? const {}
+                      : {
+                          Marker(
+                            markerId: const MarkerId('local-parceiro'),
+                            position: _local!,
+                          ),
+                        },
                 ),
               ),
             ),
@@ -243,16 +284,25 @@ class _ParceiroPageState extends State<ParceiroPage> {
     );
   }
 
-  Widget _campo(TextEditingController c, String label,
-      {IconData? icon, TextInputType? tipo, bool obrigatorio = false}) {
+  Widget _campo(
+    TextEditingController c,
+    String label, {
+    IconData? icon,
+    TextInputType? tipo,
+    bool obrigatorio = false,
+    VoidCallback? onEditingComplete,
+    Widget? suffixIcon,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: c,
         keyboardType: tipo,
+        onEditingComplete: onEditingComplete,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: icon != null ? Icon(icon) : null,
+          suffixIcon: suffixIcon,
         ),
         validator: obrigatorio
             ? (v) =>

@@ -6,12 +6,48 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function validPublicProfile() {
+      return request.resource.data.keys().hasOnly([
+        'primeiroNome', 'segundoNome', 'nomeCompleto', 'fotoUrl',
+        'cidade', 'ativo', 'criadoEm', 'atualizadoEm'
+      ]);
+    }
+
+    function validCard() {
+      return request.resource.data.keys().hasOnly([
+        'nomeTitular', 'bandeira', 'ultimos4', 'validade', 'criadoEm'
+      ])
+      && request.resource.data.ultimos4 is string
+      && request.resource.data.ultimos4.size() == 4;
+    }
+
     match /usuarios/{userId} {
+      // Perfil privado: e-mail, telefone e endereço ficam visíveis só ao dono.
       allow read: if signedIn() && request.auth.uid == userId;
       allow create, update: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.firebaseUid == request.auth.uid;
       allow delete: if false;
+    }
+
+    match /usuariosPublicos/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && validPublicProfile();
+      allow delete: if false;
+    }
+
+    match /cartoes/{userId}/{document=**} {
+      allow read, delete: if signedIn()
+        && request.auth.uid == userId;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && validCard();
     }
 
     match /configuracoes/{documentId} {
@@ -32,15 +68,185 @@ service cloud.firestore {
     }
 
     match /partidas/{partidaId} {
+      // Qualquer usuário autenticado pode ver as partidas demo.
       allow read: if signedIn();
-      allow create, update: if signedIn();
+      // Só o próprio organizador cria a partida em seu nome.
+      allow create: if signedIn()
+        && request.resource.data.organizadorId == request.auth.uid;
+      // Só o organizador altera a partida (status, placar, escalação).
+      allow update: if signedIn()
+        && resource.data.organizadorId == request.auth.uid;
       allow delete: if false;
 
       match /membros/{membroId} {
         allow read: if signedIn();
-        allow create, update: if signedIn();
+        // O organizador gerencia os membros; o próprio usuário pode entrar.
+        // organizadorId é denormalizado no membro para evitar get() (que não
+        // enxerga a partida criada no mesmo batch e ainda custa uma leitura).
+        allow create: if signedIn() && (
+          request.resource.data.organizadorId == request.auth.uid
+          || request.resource.data.usuarioId == request.auth.uid
+        );
+        allow update: if signedIn() && (
+          resource.data.organizadorId == request.auth.uid
+          || resource.data.usuarioId == request.auth.uid
+        );
         allow delete: if false;
       }
+    }
+
+    // ---- Campeonatos (dados de demonstração compartilhados) ----
+    match /clubes/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.donoId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.donoId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /clubeJogadores/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.donoId == request.auth.uid;
+      allow update, delete: if signedIn()
+        && resource.data.donoId == request.auth.uid;
+    }
+
+    match /ligas/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.donoId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.donoId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /ligaClubes/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.donoId == request.auth.uid;
+      allow delete: if signedIn()
+        && resource.data.donoId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /confrontos/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.donoId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.donoId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ---- Goleiros ----
+    match /goleiros/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /contratacoesGoleiro/{documentId} {
+      allow read: if signedIn();
+      // O solicitante cria a contratação em seu nome.
+      allow create: if signedIn()
+        && request.resource.data.solicitanteId == request.auth.uid;
+      // O goleiro responde (aceita/recusa) às suas contratações.
+      allow update: if signedIn()
+        && resource.data.goleiroUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ---- Social: amizades ----
+    match /amizades/{documentId} {
+      // Só os dois envolvidos leem/alteram a amizade.
+      allow read: if signedIn()
+        && request.auth.uid in resource.data.usuarios;
+      allow create: if signedIn()
+        && request.resource.data.solicitanteId == request.auth.uid
+        && request.resource.data.status == 'PENDENTE'
+        && request.resource.data.usuarios.size() == 2
+        && request.resource.data.usuarios.hasAll([
+          request.resource.data.solicitanteId,
+          request.resource.data.destinatarioId
+        ]);
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.usuarios
+        && changedOnly(['status', 'criadoEm'])
+        && (
+          (request.auth.uid == resource.data.destinatarioId
+            && request.resource.data.status in ['ACEITO', 'RECUSADO'])
+          || (request.auth.uid == resource.data.solicitanteId
+            && request.resource.data.status == 'PENDENTE')
+        );
+      allow delete: if false;
+    }
+
+    // ---- Social: feed ----
+    match /postagens/{postagemId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.autorId == request.auth.uid;
+      allow update: if signedIn() && (
+        (
+          changedOnly(['curtidoPor'])
+          && (
+            (
+              request.resource.data.curtidoPor.size()
+                == resource.data.curtidoPor.size() + 1
+              && request.resource.data.curtidoPor
+                .hasAll(resource.data.curtidoPor)
+              && request.resource.data.curtidoPor
+                .hasAll([request.auth.uid])
+            )
+            || (
+              request.resource.data.curtidoPor.size() + 1
+                == resource.data.curtidoPor.size()
+              && resource.data.curtidoPor
+                .hasAll(request.resource.data.curtidoPor)
+              && resource.data.curtidoPor.hasAny([request.auth.uid])
+              && !request.resource.data.curtidoPor.hasAny([request.auth.uid])
+            )
+          )
+        )
+        || (
+          changedOnly(['comentariosCount'])
+          && request.resource.data.comentariosCount
+            == resource.data.comentariosCount + 1
+        )
+      );
+      allow delete: if false;
+
+      match /comentarios/{comentarioId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.autorId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---- Rateio (divisão de custos) ----
+    match /rateios/{documentId} {
+      allow read: if signedIn();
+      // Só o organizador da partida cria/recalcula/fecha o rateio.
+      allow create: if signedIn()
+        && request.resource.data.organizadorId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.organizadorId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /cobrancas/{documentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.organizadorId == request.auth.uid;
+      // Organizador atualiza qualquer cobrança; o próprio jogador quita a sua.
+      allow update: if signedIn() && (
+        resource.data.organizadorId == request.auth.uid
+        || resource.data.idUserUid == request.auth.uid
+      );
+      allow delete: if false;
     }
 
     match /{document=**} {

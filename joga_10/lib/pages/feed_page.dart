@@ -22,6 +22,7 @@ class _FeedPageState extends State<FeedPage> {
   List<Postagem> _posts = [];
   bool _carregando = true;
   bool _erro = false;
+  bool _descobrir = false;
 
   @override
   void initState() {
@@ -36,7 +37,11 @@ class _FeedPageState extends State<FeedPage> {
     });
     try {
       final id = await Sessao.instance.usuarioId;
-      final posts = id == null ? <Postagem>[] : await _repo.listarFeed(id);
+      final posts = id == null
+          ? <Postagem>[]
+          : _descobrir
+              ? await _repo.listarDescobrir(id)
+              : await _repo.listarFeed(id);
       if (mounted) {
         setState(() {
           _posts = posts;
@@ -104,6 +109,30 @@ class _FeedPageState extends State<FeedPage> {
               tooltip: 'Amigos',
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                  value: false,
+                  icon: Icon(Icons.people_outline),
+                  label: Text('Amigos'),
+                ),
+                ButtonSegment(
+                  value: true,
+                  icon: Icon(Icons.explore_outlined),
+                  label: Text('Descobrir'),
+                ),
+              ],
+              selected: {_descobrir},
+              onSelectionChanged: (selecao) {
+                final descobrir = selecao.first;
+                if (descobrir == _descobrir) return;
+                setState(() => _descobrir = descobrir);
+                _carregar();
+              },
+            ),
+          ),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
@@ -133,9 +162,11 @@ class _FeedPageState extends State<FeedPage> {
         const SizedBox(height: 80),
         EmptyState(
           icone: Icons.dynamic_feed_outlined,
-          titulo: 'Seu feed está vazio',
-          mensagem:
-              'Compartilhe um lance ou adicione amigos para ver as novidades.',
+          titulo:
+              _descobrir ? 'Nada para descobrir ainda' : 'Seu feed está vazio',
+          mensagem: _descobrir
+              ? 'Ainda não há lances públicos para descobrir.'
+              : 'Compartilhe um lance ou adicione amigos para ver as novidades.',
           acao: ElevatedButton(
             onPressed: _abrirCriar,
             child: const Text('Compartilhar lance'),
@@ -217,7 +248,14 @@ class _PostCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(post.texto!, style: const TextStyle(fontSize: 15)),
             ),
-          if (post.foto != null)
+          if (post.fotoUrl != null)
+            Image.network(
+              post.fotoUrl!,
+              width: double.infinity,
+              height: 240,
+              fit: BoxFit.cover,
+            )
+          else if (post.foto != null)
             ClipRRect(
               child: Image.memory(
                 post.foto!,
@@ -234,7 +272,8 @@ class _PostCard extends StatelessWidget {
                   onPressed: onCurtir,
                   icon: Icon(
                     post.curtiuEu ? Icons.favorite : Icons.favorite_border,
-                    color: post.curtiuEu ? AppColors.danger : AppColors.inkMuted,
+                    color:
+                        post.curtiuEu ? AppColors.danger : AppColors.inkMuted,
                     size: 20,
                   ),
                   label: Text('${post.curtidas}',

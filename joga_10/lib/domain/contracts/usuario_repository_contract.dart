@@ -30,9 +30,11 @@ abstract interface class UsuarioRepositoryContract {
     required int id,
     required String primeiroNome,
     String? segundoNome,
+    String? cep,
     String? cidade,
     String? bairro,
     String? rua,
+    String? numero,
     String? complemento,
     String? contato,
   });

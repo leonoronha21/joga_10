@@ -6,6 +6,7 @@ import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Estabelecimentos.dart';
 import 'package:joga_10/services/local_demo_data.dart';
 import 'package:joga_10/services/firestore_compat_ids.dart';
+import 'package:joga_10/services/locais_esportivos_catalogo.dart';
 import 'package:joga_10/services/sessao.dart';
 
 class EstabelecimentoRepository {
@@ -56,20 +57,21 @@ class EstabelecimentoRepository {
   /// Apenas estabelecimentos com latitude/longitude (para o mapa).
   Future<List<Estabelecimentos>> listarComLocalizacao() async {
     if (FirestoreCompatIds.habilitado) {
-      return _listarFirestore(apenasComLocalizacao: true);
+      final cadastrados = await _listarFirestore(apenasComLocalizacao: true);
+      return LocaisEsportivosCatalogo.mesclar(cadastrados);
     }
     if (Sessao.instance.isAdminLocal) {
-      return LocalDemoData.instance.estabelecimentos
-          .where((e) => e.temLocalizacao)
-          .toList();
+      return LocaisEsportivosCatalogo.mesclar(
+        LocalDemoData.instance.estabelecimentos,
+      );
     }
     final conn = await _conn;
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY nome',
     );
-    return result
-        .map((r) => Estabelecimentos.fromRow(r.toColumnMap()))
-        .toList();
+    return LocaisEsportivosCatalogo.mesclar(
+      result.map((r) => Estabelecimentos.fromRow(r.toColumnMap())),
+    );
   }
 
   Future<int> salvar({

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 enum TipoMidia {
   fotoPerfil,
   postagem,
+  documento,
 }
 
 class MidiaArmazenada {

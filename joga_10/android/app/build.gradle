@@ -24,6 +24,14 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+def mapsApiKey = localProperties.getProperty('maps.apiKey') ?: System.getenv('MAPS_API_KEY')
+if (mapsApiKey == null || mapsApiKey.trim().isEmpty()) {
+    throw new GradleException(
+        'Google Maps API key ausente. Defina maps.apiKey em android/local.properties ' +
+        'ou a variavel de ambiente MAPS_API_KEY.'
+    )
+}
+
 android {
     namespace "br.com.joga10.app"
     compileSdkVersion flutter.compileSdkVersion
@@ -41,6 +49,7 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

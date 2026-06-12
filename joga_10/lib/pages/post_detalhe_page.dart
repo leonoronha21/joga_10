@@ -112,7 +112,12 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
                           child: Text(p.texto!,
                               style: const TextStyle(fontSize: 15)),
                         ),
-                      if (p.foto != null)
+                      if (p.fotoUrl != null)
+                        Image.network(p.fotoUrl!,
+                            width: double.infinity,
+                            height: 260,
+                            fit: BoxFit.cover)
+                      else if (p.foto != null)
                         Image.memory(p.foto!,
                             width: double.infinity,
                             height: 260,

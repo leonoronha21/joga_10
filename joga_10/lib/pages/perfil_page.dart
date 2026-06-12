@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/app.dart';
@@ -8,11 +6,10 @@ import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/pages/assinatura_page.dart';
 import 'package:joga_10/pages/cartoes_page.dart';
 import 'package:joga_10/pages/dados_cadastrais_page.dart';
-import 'package:joga_10/pages/foto_perfil_page.dart';
+import 'package:joga_10/pages/verificacao_identidade_page.dart';
 import 'package:joga_10/pages/goleiro_perfil_page.dart';
 import 'package:joga_10/pages/goleiros_page.dart';
 import 'package:joga_10/pages/minha_jornada_page.dart';
-import 'package:joga_10/pages/parceiro_page.dart';
 import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
@@ -27,7 +24,7 @@ class PerfilPage extends StatefulWidget {
 
 class _PerfilPageState extends State<PerfilPage> {
   Usuario? get _usuario => Sessao.instance.atual;
-  Uint8List? _foto;
+  String? _fotoUrl;
 
   @override
   void initState() {
@@ -39,8 +36,8 @@ class _PerfilPageState extends State<PerfilPage> {
     final id = _usuario?.id;
     if (id == null) return;
     try {
-      final foto = await UsuarioRepository().buscarFoto(id);
-      if (mounted) setState(() => _foto = foto);
+      final url = await UsuarioRepository().buscarFotoUrl(id);
+      if (mounted) setState(() => _fotoUrl = url);
     } catch (_) {}
   }
 
@@ -57,7 +54,10 @@ class _PerfilPageState extends State<PerfilPage> {
     final mudou = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => FotoPerfilPage(usuarioId: id, fotoAtual: _foto),
+        builder: (_) => VerificacaoIdentidadePage(
+          usuarioId: id,
+          midia: midia,
+        ),
       ),
     );
     if (mudou == true) _carregarFoto();
@@ -116,8 +116,9 @@ class _PerfilPageState extends State<PerfilPage> {
                 CircleAvatar(
                   radius: 26,
                   backgroundColor: Colors.white,
-                  backgroundImage: _foto != null ? MemoryImage(_foto!) : null,
-                  child: _foto == null
+                  backgroundImage:
+                      _fotoUrl != null ? NetworkImage(_fotoUrl!) : null,
+                  child: _fotoUrl == null
                       ? Text(
                           (u?.primeiroNome.isNotEmpty ?? false)
                               ? u!.primeiroNome[0].toUpperCase()
@@ -227,15 +228,8 @@ class _PerfilPageState extends State<PerfilPage> {
                   MaterialPageRoute(builder: (_) => const GoleiroPerfilPage()),
                 ),
               ),
-              _item(
-                icon: Icons.handshake_outlined,
-                titulo: 'Torne-se parceiro',
-                subtitulo: 'Cadastre seu estabelecimento',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ParceiroPage()),
-                ),
-              ),
+              // "Torne-se parceiro" oculto por ora — será habilitado em uma
+              // próxima fase do MVP.
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _sair,

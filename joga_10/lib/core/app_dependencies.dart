@@ -19,7 +19,7 @@ import 'package:joga_10/repositories/partida_repository.dart';
 import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/services/partida_convite_service.dart';
 import 'package:joga_10/services/autenticacao_firebase_service.dart';
-import 'package:joga_10/services/media_storage_desabilitado.dart';
+import 'package:joga_10/services/firebase_media_storage.dart';
 import 'package:joga_10/services/pagamento_demo_provider.dart';
 import 'package:joga_10/services/sessao.dart';
 
@@ -56,7 +56,7 @@ class AppDependencies {
     final usuarios = UsuarioRepository();
     final autenticacaoFirebase = AutenticacaoFirebaseService();
     final partidas = PartidaRepository();
-    const midia = MediaStorageDesabilitado();
+    final midia = FirebaseMediaStorage();
     const pagamentos = PagamentoDemoProvider();
     final monetizacao = MonetizacaoRepository(pagamentos: pagamentos);
     final sessao = Sessao();

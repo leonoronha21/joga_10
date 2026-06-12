@@ -4,14 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_face_liveness/flutter_face_liveness.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:joga_10/domain/contracts/media_storage_contract.dart';
 import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/theme/app_colors.dart';
 
 class FotoPerfilPage extends StatefulWidget {
   final int usuarioId;
-  final Uint8List? fotoAtual;
+  final String? fotoAtualUrl;
+  final MediaStorageContract midia;
 
-  const FotoPerfilPage({super.key, required this.usuarioId, this.fotoAtual});
+  const FotoPerfilPage({
+    super.key,
+    required this.usuarioId,
+    required this.midia,
+    this.fotoAtualUrl,
+  });
 
   @override
   State<FotoPerfilPage> createState() => _FotoPerfilPageState();
@@ -168,7 +175,17 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
 
     setState(() => _processando = true);
     try {
-      await _repo.salvarFoto(widget.usuarioId, foto, verificada: _verificada);
+      final armazenada = await widget.midia.enviar(
+        tipo: TipoMidia.fotoPerfil,
+        proprietarioId: widget.usuarioId.toString(),
+        bytes: foto,
+        contentType: 'image/jpeg',
+      );
+      await _repo.salvarFotoUrl(
+        widget.usuarioId,
+        armazenada.url,
+        verificada: _verificada,
+      );
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (_) {
@@ -184,7 +201,12 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
 
   @override
   Widget build(BuildContext context) {
-    final preview = _previa ?? widget.fotoAtual;
+    ImageProvider? preview;
+    if (_previa != null) {
+      preview = MemoryImage(_previa!);
+    } else if (widget.fotoAtualUrl != null) {
+      preview = NetworkImage(widget.fotoAtualUrl!);
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Foto de perfil')),
       body: ListView(
@@ -200,7 +222,7 @@ class _FotoPerfilPageState extends State<FotoPerfilPage> {
                 border: Border.all(color: AppColors.border, width: 2),
                 image: preview != null
                     ? DecorationImage(
-                        image: MemoryImage(preview),
+                        image: preview,
                         fit: BoxFit.cover,
                       )
                     : null,

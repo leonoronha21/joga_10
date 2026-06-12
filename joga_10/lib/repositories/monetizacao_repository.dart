@@ -1,3 +1,5 @@
+// 'Type' colide entre cloud_firestore e postgres; escondemos o do Firestore.
+import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
@@ -7,6 +9,7 @@ import 'package:joga_10/domain/contracts/pagamento_provider_contract.dart';
 import 'package:joga_10/domain/services/calculadora_rateio.dart';
 import 'package:joga_10/model/Monetizacao.dart';
 import 'package:joga_10/model/Rateio.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
 import 'package:joga_10/services/pagamento_demo_provider.dart';
 import 'package:joga_10/services/sessao.dart';
@@ -15,19 +18,25 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   final DatabaseProvider _database;
   final CalculadoraRateio _calculadora;
   final PagamentoProviderContract _pagamentos;
+  final FirebaseFirestore? _firestoreConfigurado;
 
   MonetizacaoRepository({
     DatabaseProvider? database,
     CalculadoraRateio calculadora = const CalculadoraRateio(),
     PagamentoProviderContract pagamentos = const PagamentoDemoProvider(),
+    FirebaseFirestore? firestore,
   })  : _database = database ?? AppDatabase.instance,
         _calculadora = calculadora,
-        _pagamentos = pagamentos;
+        _pagamentos = pagamentos,
+        _firestoreConfigurado = firestore;
 
   Future<Pool> get _conn => _database.connection;
+  FirebaseFirestore get _firestore =>
+      _firestoreConfigurado ?? FirebaseFirestore.instance;
 
   @override
   Future<PartidaRateio?> buscarRateioPorPartida(int partidaId) async {
+    if (FirestoreCompatIds.habilitado) return _buscarRateioFirestore(partidaId);
     if (partidaId < 0) return LocalDemoData.instance.rateios[partidaId];
     final conn = await _conn;
     final rateios = await conn.execute(
@@ -59,6 +68,13 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
     required double valorQuadra,
     required double taxaPercentual,
   }) async {
+    if (FirestoreCompatIds.habilitado) {
+      return _criarOuAtualizarRateioFirestore(
+        partidaId: partidaId,
+        valorQuadra: valorQuadra,
+        taxaPercentual: taxaPercentual,
+      );
+    }
     if (partidaId < 0) {
       return LocalDemoData.instance.criarRateio(
         partidaId: partidaId,
@@ -174,6 +190,9 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> atualizarStatusCobranca(int cobrancaId, String status) async {
+    if (FirestoreCompatIds.habilitado) {
+      return _atualizarStatusCobrancaFirestore(cobrancaId, status);
+    }
     if (cobrancaId < 0) {
       final demo = LocalDemoData.instance;
       for (final entry in demo.rateios.entries) {
@@ -279,6 +298,16 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> fecharRateio(int rateioId) async {
+    if (FirestoreCompatIds.habilitado) {
+      final doc = await _rateioDocPorId(rateioId);
+      if (doc != null) {
+        await doc.reference.update({
+          'status': RateioStatus.fechado,
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        });
+      }
+      return;
+    }
     if (rateioId < 0) {
       final demo = LocalDemoData.instance;
       final entry =
@@ -308,7 +337,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<GamificacaoUsuario> buscarGamificacao(int usuarioId) async {
-    if (usuarioId == LocalDemoData.adminId) {
+    if (FirestoreCompatIds.habilitado || usuarioId == LocalDemoData.adminId) {
       return LocalDemoData.instance.gamificacaoAdmin;
     }
     final conn = await _conn;
@@ -374,7 +403,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<List<PlanoAssinatura>> listarPlanos() async {
-    if (Sessao.instance.isAdminLocal) {
+    if (FirestoreCompatIds.habilitado || Sessao.instance.isAdminLocal) {
       return List.unmodifiable(LocalDemoData.instance.planos);
     }
     final conn = await _conn;
@@ -386,7 +415,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<AssinaturaUsuario?> buscarAssinatura(int usuarioId) async {
-    if (usuarioId == LocalDemoData.adminId) {
+    if (FirestoreCompatIds.habilitado || usuarioId == LocalDemoData.adminId) {
       return LocalDemoData.instance.assinatura;
     }
     final conn = await _conn;
@@ -421,7 +450,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<void> ativarTestePro(int usuarioId) async {
-    if (usuarioId == LocalDemoData.adminId) {
+    if (FirestoreCompatIds.habilitado || usuarioId == LocalDemoData.adminId) {
       final demo = LocalDemoData.instance;
       final pro = demo.planos.firstWhere((p) => p.codigo == 'PRO');
       demo.assinatura = AssinaturaUsuario(
@@ -455,5 +484,180 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       '''),
       parameters: {'usuario': usuarioId},
     );
+  }
+
+  // ---- Rateio no Firestore ----
+  Future<PartidaRateio?> _buscarRateioFirestore(int partidaId) async {
+    final partidaDoc = await _partidaDocPorId(partidaId);
+    if (partidaDoc == null) return null;
+    final rateioDoc =
+        await _firestore.collection('rateios').doc(partidaDoc.id).get();
+    if (!rateioDoc.exists) return null;
+    final m = rateioDoc.data() ?? const {};
+    final cobrancasDocs = await _firestore
+        .collection('cobrancas')
+        .where('rateioPartidaId', isEqualTo: partidaDoc.id)
+        .get();
+    final cobrancas = cobrancasDocs.docs.map(_cobrancaDeDoc).toList();
+    cobrancas.sort((a, b) {
+      final qa = a.quitado ? 1 : 0;
+      final qb = b.quitado ? 1 : 0;
+      if (qa != qb) return qa.compareTo(qb); // pendentes primeiro
+      return a.nome.compareTo(b.nome);
+    });
+    return PartidaRateio(
+      id: FirestoreCompatIds.registrar('rateios', partidaDoc.id),
+      partidaId: partidaId,
+      valorQuadra: (m['valorQuadra'] as num?)?.toDouble() ?? 0,
+      taxaPercentual: (m['taxaPercentual'] as num?)?.toDouble() ?? 0,
+      status: (m['status'] as String?) ?? RateioStatus.aberto,
+      cobrancas: cobrancas,
+    );
+  }
+
+  Future<PartidaRateio> _criarOuAtualizarRateioFirestore({
+    required int partidaId,
+    required double valorQuadra,
+    required double taxaPercentual,
+  }) async {
+    final partidaDoc = await _partidaDocPorId(partidaId);
+    if (partidaDoc == null) {
+      throw StateError('Partida não encontrada.');
+    }
+    final organizadorId = partidaDoc.data()?['organizadorId'] as String?;
+    final membros = await partidaDoc.reference.collection('membros').get();
+    final valores = _calculadora.calcular(
+      valorQuadra: valorQuadra,
+      taxaPercentual: taxaPercentual,
+      participantes: membros.docs.length,
+    );
+    final meuUid = FirestoreCompatIds.usuarioUid;
+
+    final batch = _firestore.batch();
+    batch.set(
+      _firestore.collection('rateios').doc(partidaDoc.id),
+      {
+        'partidaId': partidaDoc.id,
+        'organizadorId': organizadorId,
+        'valorQuadra': valorQuadra,
+        'taxaPercentual': taxaPercentual,
+        'status': RateioStatus.aberto,
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+    for (final membro in membros.docs) {
+      final md = membro.data();
+      final uid = md['usuarioId'] as String?;
+      final idUserCompat = uid == null
+          ? null
+          : (uid == meuUid
+              ? (Sessao.instance.atual?.id ?? LocalDemoData.adminId)
+              : FirestoreCompatIds.registrar('usuarios', uid));
+      final cobrancaRef =
+          _firestore.collection('cobrancas').doc('${partidaDoc.id}_${membro.id}');
+      final existente = await cobrancaRef.get();
+      final jaPago =
+          existente.exists && existente.data()?['status'] == CobrancaStatus.pago;
+      batch.set(
+        cobrancaRef,
+        {
+          'rateioPartidaId': partidaDoc.id,
+          'organizadorId': organizadorId,
+          'partidaMembroId': FirestoreCompatIds.registrar(
+              'partidas/${partidaDoc.id}/membros', membro.id),
+          'idUserCompat': idUserCompat,
+          'idUserUid': uid,
+          'nome': (md['nome'] as String?) ?? '',
+          if (!jaPago) 'valorQuadra': valores.valorQuadraPorJogador,
+          if (!jaPago) 'taxaServico': valores.taxaPorJogador,
+          if (!jaPago) 'valorTotal': valores.totalPorJogador,
+          if (!jaPago) 'status': CobrancaStatus.pendente,
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+    await batch.commit();
+    return (await _buscarRateioFirestore(partidaId))!;
+  }
+
+  Future<void> _atualizarStatusCobrancaFirestore(
+      int cobrancaId, String status) async {
+    final doc = await _cobrancaDocPorId(cobrancaId);
+    if (doc == null) return;
+    if (status == CobrancaStatus.pago) {
+      final valorTotal = (doc.data()?['valorTotal'] as num?)?.toDouble() ?? 0;
+      await _pagamentos.pagar(
+        SolicitacaoPagamento(
+          referenciaCobranca: doc.id,
+          valorCentavos: (valorTotal * 100).round(),
+          descricao: 'Rateio Joga10',
+        ),
+      );
+    }
+    await doc.reference.update({
+      'status': status,
+      'pagoEm':
+          status == CobrancaStatus.pago ? FieldValue.serverTimestamp() : null,
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+  }
+
+  RateioCobranca _cobrancaDeDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final m = doc.data() ?? const {};
+    final pagoEm = m['pagoEm'];
+    return RateioCobranca(
+      id: FirestoreCompatIds.registrar('cobrancas', doc.id),
+      rateioId: FirestoreCompatIds.registrar(
+          'rateios', (m['rateioPartidaId'] as String?) ?? ''),
+      partidaMembroId: (m['partidaMembroId'] as num?)?.toInt(),
+      idUser: (m['idUserCompat'] as num?)?.toInt(),
+      nome: (m['nome'] as String?) ?? '',
+      valorQuadra: (m['valorQuadra'] as num?)?.toDouble() ?? 0,
+      taxaServico: (m['taxaServico'] as num?)?.toDouble() ?? 0,
+      valorTotal: (m['valorTotal'] as num?)?.toDouble() ?? 0,
+      status: (m['status'] as String?) ?? CobrancaStatus.pendente,
+      pagoEm: pagoEm is Timestamp ? pagoEm.toDate() : null,
+    );
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _partidaDocPorId(
+      int id) async {
+    final conhecido = FirestoreCompatIds.documento('partidas', id);
+    final ref = _firestore.collection('partidas');
+    if (conhecido != null) {
+      final d = await ref.doc(conhecido).get();
+      if (d.exists) return d;
+    }
+    final docs = await ref.get();
+    for (final d in docs.docs) {
+      if (FirestoreCompatIds.registrar('partidas', d.id) == id) return d;
+    }
+    return null;
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _rateioDocPorId(
+      int id) async {
+    final docs = await _firestore.collection('rateios').get();
+    for (final d in docs.docs) {
+      if (FirestoreCompatIds.registrar('rateios', d.id) == id) return d;
+    }
+    return null;
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _cobrancaDocPorId(
+      int id) async {
+    final conhecido = FirestoreCompatIds.documento('cobrancas', id);
+    final ref = _firestore.collection('cobrancas');
+    if (conhecido != null) {
+      final d = await ref.doc(conhecido).get();
+      if (d.exists) return d;
+    }
+    final docs = await ref.get();
+    for (final d in docs.docs) {
+      if (FirestoreCompatIds.registrar('cobrancas', d.id) == id) return d;
+    }
+    return null;
   }
 }

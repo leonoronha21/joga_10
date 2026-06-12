@@ -6,7 +6,10 @@ Projeto Firebase: `joga10-ec65f`
 
 - Firestore criado em `southamerica-east1`, com free tier e protecao contra
   exclusao.
-- Carga inicial com 30 documentos demonstrativos concluida.
+- Carga demonstrativa (`tool/seed_firestore_demo.mjs`): 50 documentos —
+  usuarios, estabelecimentos (Porto Alegre-RS), quadras, partidas/membros, e
+  uma liga com 4 clubes + confrontos REALIZADOS (classificação) + elenco e 2
+  goleiros disponíveis.
 - Regras do cliente fechadas e indices publicados.
 - Firebase inicializado no Flutter.
 - Login Google implementado no Flutter, com SHA-1/SHA-256 de debug cadastrados.
@@ -24,9 +27,25 @@ Projeto Firebase: `joga10-ec65f`
 - O ambiente contem somente dados de demonstracao.
 - IDs numericos do PostgreSQL nao serao preservados.
 - Novos documentos usam IDs textuais do Firestore.
-- Uploads de fotos ficam desativados no Spark porque, desde 3 de fevereiro de
-  2026, o Cloud Storage for Firebase exige o plano Blaze para manter acesso ao
-  bucket. No Spark, chamadas ao Storage retornam erros 402 ou 403.
+- Com o plano **Blaze** ativo, as imagens (foto de perfil e posts) agora vão
+  para o **Firebase Cloud Storage** (`FirebaseMediaStorage`), salvando só a URL
+  no Firestore. Regras em `storage.rules` (escrita restrita ao próprio uid).
+  ⚠️ Pré-requisito único: ativar o Storage no console
+  (`console.firebase.google.com/project/joga10-ec65f/storage` → "Get Started")
+  e então `firebase deploy --only storage`.
+- **Verificação de identidade (KYC/biometria):** foto do documento (CNH/RG) →
+  prova de vida (liveness) → **face match 1:1** documento × selfie
+  (MobileFaceNet do `flutter_face_liveness` + ML Kit; comparação de embeddings
+  por cosseno, 100% no dispositivo). O documento NÃO é armazenado (privacidade);
+  em caso de match, a selfie vira a foto de perfil verificada
+  (`fotoVerificada` + `faceMatchScore`). Limiar calibrável em `BiometriaFacial`.
+- Pagamentos continuam simulados, mas passam por um contrato de provedor.
+- Firebase Authentication e as regras das colecoes migradas estao publicados.
+- App Check ativado no cliente mobile (debug em desenvolvimento, Play Integrity
+  no Android release e App Attest/DeviceCheck no iOS). Antes da demo pública,
+  registrar os apps e habilitar enforcement no console.
+- Para semear uma amizade aceita entre o usuário Google de teste e o perfil
+  demo, execute o seed com `DEMO_USER_UID` definido para o uid desse usuário.
 - Pagamentos continuam simulados, mas passam por um contrato de provedor.
 - Firebase Authentication e as regras das colecoes migradas estao publicados.
 
@@ -39,12 +58,15 @@ Projeto Firebase: `joga10-ec65f`
 | Quadras | `quadras` | Conectado |
 | Partidas, convidados, escalacao e gols | `partidas/{id}/membros` | Conectado |
 | Convite por contato | Agenda do aparelho + WhatsApp | Conectado no Android |
-| Feed, posts e comentarios | PostgreSQL/local demo | Pendente |
-| Amizades | PostgreSQL/local demo | Pendente |
-| Campeonatos, clubes e confrontos | PostgreSQL/local demo | Pendente |
-| Goleiros | PostgreSQL/local demo | Pendente |
-| Dados cadastrais e foto | PostgreSQL/local demo | Pendente |
-| Cartoes, rateios e pagamentos | PostgreSQL/local demo | Pendente |
+| Feed, posts, curtidas e comentarios | `postagens` (+ `comentarios`) | Conectado; imagem via Firebase Storage |
+| Amizades | `amizades` (par de uids) | Conectado |
+| Campeonatos, ligas, clubes e confrontos | `clubes`/`ligas`/`ligaClubes`/`confrontos`/`clubeJogadores` | Conectado |
+| Goleiros e contratações | `goleiros/{uid}` + `contratacoesGoleiro` | Conectado |
+| Foto de perfil + verificação (documento → liveness → face match) | Firebase Storage + `usuarios.fotoUrl`/`fotoVerificada` | Conectado (requer Storage ativo) |
+| Dados cadastrais | `usuarios/{uid}` privado + ViaCEP | Conectado |
+| Rateio (divisão de custos) | `rateios/{partidaId}` + `cobrancas` | Conectado |
+| Pagamentos | `PagamentoDemoProvider` + Google Pay (TEST) | Simulado |
+| Cartoes (dados cadastrais) | `cartoes/{uid}/itens` | Conectado; somente dados PCI seguros |
 
 O Android nao permite que o app liste diretamente apenas os contatos do
 WhatsApp. O fluxo atual abre o seletor de contatos do aparelho e, depois da
@@ -107,11 +129,22 @@ o backend existente ou outro servico externo.
 
 ## Proximas liberacoes de seguranca
 
-1. Restringir alteracoes de partidas e membros ao organizador e ao proprio
-   usuario. As regras demonstrativas atuais permitem update por qualquer
-   usuario autenticado.
+1. (FEITO) Alteracoes de partidas e membros restritas ao organizador e ao
+   proprio usuario. `partidas`: create/update apenas pelo organizador.
+   `partidas/{id}/membros`: create/update apenas pelo organizador ou pelo
+   proprio usuario. Para evitar `get()` dentro de um batch (a partida ainda
+   nao existe no commit) o campo `organizadorId` e denormalizado em cada
+   membro. Observacao: partidas semeadas (seed) pertencem a um uid de demo, de
+   modo que outros usuarios as leem mas nao as editam; partidas criadas pelo
+   usuario logado funcionam por completo.
 2. Substituir a sessao local por `FirebaseAuth` e IDs textuais.
-3. Migrar os repositorios pendentes da matriz acima.
-4. Configurar uma pagina publica e associacao de app links para o dominio
+3. (FEITO) Escritas comunitarias exigem proprietário, curtidas só alteram o
+   próprio uid e a busca social usa `usuariosPublicos` sem e-mail/endereço.
+4. Remover `FirestoreCompatIds` e migrar os modelos/deep links de `int` para
+   `String`; ainda há varreduras O(n) enquanto essa compatibilidade existir.
+5. Configurar uma pagina publica e associacao de app links para o dominio
    `joga10.app`, permitindo convite para quem ainda nao instalou o app.
-5. Ativar App Check antes de uma demonstracao publica.
+6. Registrar os providers e habilitar enforcement do App Check no console.
+7. Calibrar o limiar do face match em aparelhos reais e ativar Phone Auth.
+8. Retirar o PostgreSQL dos fluxos locais restantes e conectar pagamentos reais
+   somente por backend/webhooks.

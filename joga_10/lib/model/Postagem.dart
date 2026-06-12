@@ -9,6 +9,7 @@ class Postagem {
   final String autorNome;
   final String? texto;
   final Uint8List? foto;
+  final String? fotoUrl; // imagem em storage externo (Firestore)
   final int? partidaId;
   final DateTime criadoEm;
   final int curtidas;
@@ -21,6 +22,7 @@ class Postagem {
     required this.autorNome,
     this.texto,
     this.foto,
+    this.fotoUrl,
     this.partidaId,
     required this.criadoEm,
     this.curtidas = 0,
@@ -35,6 +37,7 @@ class Postagem {
       autorNome: autorNome,
       texto: texto,
       foto: foto,
+      fotoUrl: fotoUrl,
       partidaId: partidaId,
       criadoEm: criadoEm,
       curtidas: curtidas ?? this.curtidas,
@@ -53,6 +56,7 @@ class Postagem {
       foto: foto == null
           ? null
           : (foto is Uint8List ? foto : Uint8List.fromList(List<int>.from(foto))),
+      fotoUrl: row['foto_url'] as String?,
       partidaId: row['partida_id'] == null ? null : asInt(row['partida_id']),
       criadoEm: row['criado_em'] as DateTime,
       curtidas: asInt(row['curtidas']),

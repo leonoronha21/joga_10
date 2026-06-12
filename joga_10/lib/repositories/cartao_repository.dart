@@ -1,19 +1,52 @@
+import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Cartao.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
 
 class CartaoRepository {
   final DatabaseProvider _database;
+  final FirebaseFirestore? _firestoreConfigurado;
+  final String? _usuarioUidConfigurado;
 
-  CartaoRepository({DatabaseProvider? database})
-      : _database = database ?? AppDatabase.instance;
+  CartaoRepository({
+    DatabaseProvider? database,
+    FirebaseFirestore? firestore,
+    String? usuarioUid,
+  })  : _database = database ?? AppDatabase.instance,
+        _firestoreConfigurado = firestore,
+        _usuarioUidConfigurado = usuarioUid;
 
   Future<Pool> get _conn => _database.connection;
+  FirebaseFirestore get _firestore =>
+      _firestoreConfigurado ?? FirebaseFirestore.instance;
+  String? get _usuarioUid =>
+      _usuarioUidConfigurado ?? FirestoreCompatIds.usuarioUid;
 
   Future<List<Cartao>> listarPorUsuario(int idUser) async {
+    final uid = _usuarioUid;
+    if (uid != null) {
+      final docs = await _firestore
+          .collection('cartoes')
+          .doc(uid)
+          .collection('itens')
+          .orderBy('criadoEm', descending: true)
+          .get();
+      return docs.docs.map((doc) {
+        final dados = doc.data();
+        return Cartao(
+          id: FirestoreCompatIds.registrar('cartoes/$uid/itens', doc.id),
+          idUser: idUser,
+          nomeTitular: (dados['nomeTitular'] as String?) ?? '',
+          bandeira: dados['bandeira'] as String?,
+          ultimos4: (dados['ultimos4'] as String?) ?? '',
+          validade: (dados['validade'] as String?) ?? '',
+        );
+      }).toList();
+    }
     if (idUser == LocalDemoData.adminId) {
       return List.unmodifiable(LocalDemoData.instance.cartoes);
     }
@@ -39,6 +72,22 @@ class CartaoRepository {
     final ultimos4 = digits.length >= 4
         ? digits.substring(digits.length - 4)
         : digits.padLeft(4, '0');
+
+    final uid = _usuarioUid;
+    if (uid != null) {
+      final referencia = await _firestore
+          .collection('cartoes')
+          .doc(uid)
+          .collection('itens')
+          .add({
+        'nomeTitular': nomeTitular.trim(),
+        'bandeira': bandeira?.trim(),
+        'ultimos4': ultimos4,
+        'validade': validade.trim(),
+        'criadoEm': FieldValue.serverTimestamp(),
+      });
+      return FirestoreCompatIds.registrar('cartoes/$uid/itens', referencia.id);
+    }
 
     if (idUser == LocalDemoData.adminId) {
       final demo = LocalDemoData.instance;

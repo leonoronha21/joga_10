@@ -535,6 +535,8 @@ class PartidaRepository implements PartidaRepositoryContract {
       batch.set(membroRef, {
         'usuarioId':
             membro.idUser == null ? null : FirestoreCompatIds.usuarioUid,
+        // Denormalizado para as regras de segurança (sem get() no batch).
+        'organizadorId': FirestoreCompatIds.usuarioUid,
         'nome': membro.nome,
         'telefone': membro.telefone,
         'equipe': membro.equipe,
@@ -714,8 +716,14 @@ class PartidaRepository implements PartidaRepositoryContract {
   }) async {
     final partida = await _documentoPartida(partidaId);
     if (partida == null) return;
+    // organizadorId vem da partida (denormalizado no membro p/ as regras).
+    // O próprio usuário que entra grava seu usuarioId; o organizador pode
+    // adicionar convidados. NÃO tocamos no doc da partida aqui: isso permitiria
+    // que um não-organizador disparasse um update bloqueado pelas regras.
+    final organizadorId = partida.data()?['organizadorId'] as String?;
     await partida.reference.collection('membros').add({
       'usuarioId': idUser == null ? null : FirestoreCompatIds.usuarioUid,
+      'organizadorId': organizadorId,
       'nome': nome,
       'telefone': telefone,
       'equipe': equipe,
@@ -723,8 +731,6 @@ class PartidaRepository implements PartidaRepositoryContract {
       'ambiente': 'DEMO',
       'criadoEm': FieldValue.serverTimestamp(),
     });
-    await partida.reference
-        .update({'atualizadoEm': FieldValue.serverTimestamp()});
   }
 
   Future<DocumentSnapshot<Map<String, dynamic>>?> _documentoMembro(

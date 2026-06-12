@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:joga_10/core/app_dependencies.dart';
+import 'package:joga_10/domain/contracts/media_storage_contract.dart';
 import 'package:joga_10/repositories/postagem_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_theme.dart';
@@ -86,10 +87,25 @@ class _CriarPostPageState extends State<CriarPostPage> {
     if (id == null) return;
     setState(() => _salvando = true);
     try {
+      String? fotoUrl;
+      final foto = _foto;
+      if (foto != null) {
+        final midia = AppDependenciesScope.of(context).midia;
+        if (midia.uploadsHabilitados) {
+          final armazenada = await midia.enviar(
+            tipo: TipoMidia.postagem,
+            proprietarioId: id.toString(),
+            bytes: foto,
+            contentType: 'image/jpeg',
+          );
+          fotoUrl = armazenada.url;
+        }
+      }
       await _repo.criar(
         autorId: id,
         texto: _texto.text.trim().isEmpty ? null : _texto.text.trim(),
         foto: _foto,
+        fotoUrl: fotoUrl,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -144,8 +160,8 @@ class _CriarPostPageState extends State<CriarPostPage> {
           else
             OutlinedButton.icon(
               onPressed: _menuFoto,
-              icon: const Icon(Icons.cloud_off_outlined),
-              label: const Text('Fotos indisponiveis no Spark'),
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('Adicionar foto'),
             ),
           const SizedBox(height: 24),
           ElevatedButton(

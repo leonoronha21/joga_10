@@ -1,12 +1,15 @@
 import 'dart:typed_data';
 
 import 'package:bcrypt/bcrypt.dart';
+// 'Type' colide com postgres (usado em TypedValue) — escondemos o do Firestore.
+import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
 
 /// Resultado possível de um cadastro.
@@ -137,14 +140,59 @@ class UsuarioRepository implements UsuarioRepositoryContract {
     required int id,
     required String primeiroNome,
     String? segundoNome,
+    String? cep,
     String? cidade,
     String? bairro,
     String? rua,
+    String? numero,
     String? complemento,
     String? contato,
   }) async {
+    if (FirestoreCompatIds.habilitado) {
+      final uid = FirestoreCompatIds.usuarioUid;
+      if (uid == null) return false;
+      final nomeCompleto = [primeiroNome.trim(), (segundoNome ?? '').trim()]
+          .where((p) => p.isNotEmpty)
+          .join(' ');
+      final firestore = FirebaseFirestore.instance;
+      final batch = firestore.batch();
+      batch.set(
+        firestore.collection('usuarios').doc(uid),
+        {
+          'firebaseUid': uid,
+          'primeiroNome': primeiroNome.trim(),
+          'segundoNome': segundoNome?.trim(),
+          'nomeCompleto': nomeCompleto,
+          'cep': cep?.trim(),
+          'cidade': cidade?.trim(),
+          'bairro': bairro?.trim(),
+          'rua': rua?.trim(),
+          'numero': numero?.trim(),
+          'complemento': complemento?.trim(),
+          'contato': contato?.trim(),
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      batch.set(
+        firestore.collection('usuariosPublicos').doc(uid),
+        {
+          'primeiroNome': primeiroNome.trim(),
+          'segundoNome': segundoNome?.trim(),
+          'nomeCompleto': nomeCompleto,
+          'cidade': cidade?.trim(),
+          'ativo': true,
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+      return true;
+    }
     if (id == LocalDemoData.adminId) return true;
     final conn = await _conn;
+    // OBS: a tabela usuario (Postgres) não tem colunas cep/numero — esses campos
+    // são persistidos apenas no Firestore (sessão Google) por enquanto.
     final result = await conn.execute(
       Sql.named('''
         UPDATE usuario SET
@@ -169,6 +217,32 @@ class UsuarioRepository implements UsuarioRepositoryContract {
       },
     );
     return result.affectedRows > 0;
+  }
+
+  /// Perfil completo (com endereço) da sessão Google, lido de `usuarios/{uid}`.
+  /// Usado para pré-preencher o formulário de dados cadastrais.
+  Future<Usuario?> perfilFirestore() async {
+    if (!FirestoreCompatIds.habilitado) return null;
+    final uid = FirestoreCompatIds.usuarioUid;
+    if (uid == null) return null;
+    final doc =
+        await FirebaseFirestore.instance.collection('usuarios').doc(uid).get();
+    if (!doc.exists) return null;
+    final m = doc.data() ?? const {};
+    return Usuario(
+      id: LocalDemoData.adminId,
+      primeiroNome: (m['primeiroNome'] as String?) ?? '',
+      segundoNome: m['segundoNome'] as String?,
+      email: (m['email'] as String?) ?? '',
+      cep: m['cep'] as String?,
+      cidade: m['cidade'] as String?,
+      bairro: m['bairro'] as String?,
+      rua: m['rua'] as String?,
+      numero: m['numero'] as String?,
+      complemento: m['complemento'] as String?,
+      contato: m['contato'] as String?,
+      role: (m['role'] as String?) ?? 'USER',
+    );
   }
 
   /// Salva a foto de perfil (bytes) e a marca como verificada (liveness) ou não.
@@ -205,5 +279,60 @@ class UsuarioRepository implements UsuarioRepositoryContract {
     final foto = r.first.toColumnMap()['foto'];
     if (foto == null) return null;
     return foto is Uint8List ? foto : Uint8List.fromList(List<int>.from(foto));
+  }
+
+  /// Salva a URL da foto de perfil (storage externo). No Firestore grava em
+  /// `usuarios/{uid}.fotoUrl`; na sessão local guarda em memória (demo).
+  Future<void> salvarFotoUrl(int id, String url,
+      {bool verificada = false, double? score}) async {
+    if (FirestoreCompatIds.habilitado) {
+      final uid = FirestoreCompatIds.usuarioUid;
+      if (uid == null) return;
+      final firestore = FirebaseFirestore.instance;
+      final batch = firestore.batch();
+      batch.set(
+        firestore.collection('usuarios').doc(uid),
+        {
+          'firebaseUid': uid,
+          'fotoUrl': url,
+          'fotoVerificada': verificada,
+          if (score != null) 'faceMatchScore': score,
+          if (verificada) 'verificadoEm': FieldValue.serverTimestamp(),
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      batch.set(
+        firestore.collection('usuariosPublicos').doc(uid),
+        {
+          'fotoUrl': url,
+          'atualizadoEm': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+      return;
+    }
+    if (id == LocalDemoData.adminId) {
+      LocalDemoData.instance.fotoAdminUrl = url;
+    }
+  }
+
+  /// Busca a URL da foto de perfil (Firestore `usuarios/{uid}` ou demo local).
+  Future<String?> buscarFotoUrl(int id) async {
+    if (FirestoreCompatIds.habilitado) {
+      final uid = FirestoreCompatIds.usuarioUid;
+      if (uid == null) return null;
+      final doc = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .get();
+      final dados = doc.data();
+      // Foto própria no Storage tem prioridade; senão usa a do Google.
+      return (dados?['fotoUrl'] as String?) ??
+          (dados?['fotoUrlGoogle'] as String?);
+    }
+    if (id == LocalDemoData.adminId) return LocalDemoData.instance.fotoAdminUrl;
+    return null;
   }
 }

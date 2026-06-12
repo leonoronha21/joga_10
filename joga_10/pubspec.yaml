@@ -21,8 +21,6 @@ dependencies:
   postgres: ^3.5.6
   bcrypt: ^1.1.3
   intl: ^0.20.2
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.1
   geolocator: ^13.0.1
   flutter_contacts: ^1.1.9+2
   # Liveness facial (prova de vida) para a foto de perfil
@@ -33,12 +31,22 @@ dependencies:
   firebase_core: ^4.10.0
   firebase_auth: ^6.5.2
   cloud_firestore: ^6.5.0
+  firebase_storage: ^13.0.0
   google_sign_in: 6.2.2
+  # Detecção de rosto (bbox + olhos) para o face match documento × selfie
+  google_mlkit_face_detection: ^0.13.2
+  # Consulta de endereço via ViaCEP
+  http: ^1.2.2
+  # Google Pay (ambiente de teste) para os cartões/pagamentos
+  pay: ^3.2.1
+  firebase_app_check: ^0.4.4+2
+  google_maps_flutter: ^2.17.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  fake_cloud_firestore: ^4.1.1
 
 flutter:
   uses-material-design: true

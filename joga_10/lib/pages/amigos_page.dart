@@ -100,7 +100,7 @@ class _AmigosPageState extends State<AmigosPage> {
               controller: _busca,
               onChanged: _buscar,
               decoration: InputDecoration(
-                hintText: 'Buscar pessoas por nome ou email',
+                hintText: 'Buscar pessoas por nome',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _pesquisando
                     ? IconButton(
@@ -198,9 +198,10 @@ class _AmigosPageState extends State<AmigosPage> {
                 children: [
                   Text(p.nome,
                       style: const TextStyle(fontWeight: FontWeight.w700)),
-                  Text(p.email,
-                      style: const TextStyle(
-                          color: AppColors.inkMuted, fontSize: 12)),
+                  if (p.email.isNotEmpty)
+                    Text(p.email,
+                        style: const TextStyle(
+                            color: AppColors.inkMuted, fontSize: 12)),
                 ],
               ),
             ),
@@ -234,9 +235,10 @@ class _AmigosPageState extends State<AmigosPage> {
                 children: [
                   Text(u.nomeCompleto,
                       style: const TextStyle(fontWeight: FontWeight.w700)),
-                  Text(u.email,
-                      style: const TextStyle(
-                          color: AppColors.inkMuted, fontSize: 12)),
+                  if ((u.cidade ?? '').isNotEmpty)
+                    Text(u.cidade!,
+                        style: const TextStyle(
+                            color: AppColors.inkMuted, fontSize: 12)),
                 ],
               ),
             ),
@@ -282,9 +284,10 @@ class _AmigosPageState extends State<AmigosPage> {
               children: [
                 Text(u.nome,
                     style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(u.email,
-                    style: const TextStyle(
-                        color: AppColors.inkMuted, fontSize: 12)),
+                if (u.email.isNotEmpty)
+                  Text(u.email,
+                      style: const TextStyle(
+                          color: AppColors.inkMuted, fontSize: 12)),
               ],
             ),
           ),

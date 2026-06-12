@@ -37,6 +37,7 @@ class LocalDemoData {
   final Map<int, PartidaRateio> rateios = {};
 
   Uint8List? fotoAdmin;
+  String? fotoAdminUrl;
   AssinaturaUsuario? assinatura;
   Goleiro? perfilGoleiroAdmin;
   int _proximoId = -1000;
@@ -87,45 +88,45 @@ class LocalDemoData {
   final estabelecimentos = <Estabelecimentos>[
     Estabelecimentos(
       id: -101,
-      nome: 'Arena Joga10 Paulista',
-      cidade: 'Sao Paulo',
-      bairro: 'Bela Vista',
-      rua: 'Av. Paulista',
-      numero: '1000',
-      telefone: '(11) 3333-1010',
+      nome: 'Arena Joga10 Moinhos',
+      cidade: 'Porto Alegre',
+      bairro: 'Moinhos de Vento',
+      rua: 'Rua Padre Chagas',
+      numero: '100',
+      telefone: '(51) 3333-1010',
       horaAbertura: '08:00',
       horaFechamento: '23:30',
       status: 1,
-      latitude: -23.5614,
-      longitude: -46.6559,
+      latitude: -30.0247,
+      longitude: -51.2030,
     ),
     Estabelecimentos(
       id: -102,
-      nome: 'Centro Esportivo Ibirapuera',
-      cidade: 'Sao Paulo',
-      bairro: 'Moema',
-      rua: 'Av. Ibirapuera',
-      numero: '2100',
-      telefone: '(11) 3333-2020',
+      nome: 'Centro Esportivo Marinha do Brasil',
+      cidade: 'Porto Alegre',
+      bairro: 'Praia de Belas',
+      rua: 'Av. Edvaldo Pereira Paiva',
+      numero: '200',
+      telefone: '(51) 3333-2020',
       horaAbertura: '07:00',
       horaFechamento: '22:00',
       status: 1,
-      latitude: -23.5988,
-      longitude: -46.6629,
+      latitude: -30.0577,
+      longitude: -51.2370,
     ),
     Estabelecimentos(
       id: -103,
-      nome: 'Quadras Vila Madalena',
-      cidade: 'Sao Paulo',
-      bairro: 'Vila Madalena',
-      rua: 'Rua Harmonia',
+      nome: 'Quadras Parque da Redenção',
+      cidade: 'Porto Alegre',
+      bairro: 'Bom Fim',
+      rua: 'Av. João Pessoa',
       numero: '88',
-      telefone: '(11) 3333-3030',
+      telefone: '(51) 3333-3030',
       horaAbertura: '09:00',
       horaFechamento: '00:00',
       status: 1,
-      latitude: -23.5545,
-      longitude: -46.6906,
+      latitude: -30.0395,
+      longitude: -51.2160,
     ),
   ];
 

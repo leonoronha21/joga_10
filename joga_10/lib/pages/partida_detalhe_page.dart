@@ -223,6 +223,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
             return const EmptyState(
               icone: Icons.error_outline,
               titulo: 'Partida nao encontrada',
+              mensagem:
+                  'O convite pode ter expirado ou você precisa entrar com sua '
+                  'conta Google para abrir partidas compartilhadas.',
             );
           }
           final podeAlterar = p.status == PartidaStatus.agendada ||

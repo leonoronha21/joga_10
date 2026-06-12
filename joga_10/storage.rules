@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function imagemValida() {
+      return request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Fotos de perfil: legíveis por autenticados; escrita só pelo dono.
+    match /perfis/{uid}/{arquivo=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && imagemValida();
+    }
+
+    // Imagens de posts: legíveis por autenticados; escrita só pelo autor.
+    match /postagens/{uid}/{arquivo=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && imagemValida();
+    }
+
+    // Documentos (CNH/RG) são sensíveis: leitura e escrita apenas do dono.
+    match /documentos/{uid}/{arquivo=**} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if signedIn() && request.auth.uid == uid && imagemValida();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
