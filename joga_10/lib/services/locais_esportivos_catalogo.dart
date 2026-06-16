@@ -137,21 +137,30 @@ class LocaisEsportivosCatalogo {
 
   static List<Estabelecimentos> mesclar(
     Iterable<Estabelecimentos> cadastrados,
+  ) =>
+      mesclarSomente([...cadastrados, ...locais]);
+
+  static List<Estabelecimentos> mesclarSomente(
+    Iterable<Estabelecimentos> locaisParaMesclar,
   ) {
     final resultado = <Estabelecimentos>[];
     final chavesNomes = <String>{};
     final chavesCoordenadas = <String>{};
+    final placeIds = <String>{};
 
-    for (final local in [...cadastrados, ...locais]) {
+    for (final local in locaisParaMesclar) {
       if (!local.temLocalizacao) continue;
       final chaveNome =
           '${normalizar(local.nome)}|${normalizar(local.cidade ?? '')}';
       final chaveCoordenada =
           '${local.latitude!.toStringAsFixed(5)}|${local.longitude!.toStringAsFixed(5)}';
-      if (chavesNomes.contains(chaveNome) ||
+      final placeId = local.placeId;
+      if ((placeId != null && placeIds.contains(placeId)) ||
+          chavesNomes.contains(chaveNome) ||
           chavesCoordenadas.contains(chaveCoordenada)) {
         continue;
       }
+      if (placeId != null) placeIds.add(placeId);
       chavesNomes.add(chaveNome);
       chavesCoordenadas.add(chaveCoordenada);
       resultado.add(local);

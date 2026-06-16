@@ -17,6 +17,15 @@ class Estabelecimentos {
   final int status;
   final double? latitude;
   final double? longitude;
+  final String? placeId;
+  final String? enderecoFormatado;
+  final String? tipoPrincipal;
+  final double? avaliacao;
+  final int? totalAvaliacoes;
+  final String? googleMapsUrl;
+  final String? siteUrl;
+  final String? statusFuncionamento;
+  final List<String> horariosFuncionamento;
 
   Estabelecimentos({
     required this.id,
@@ -35,13 +44,28 @@ class Estabelecimentos {
     this.status = 0,
     this.latitude,
     this.longitude,
+    this.placeId,
+    this.enderecoFormatado,
+    this.tipoPrincipal,
+    this.avaliacao,
+    this.totalAvaliacoes,
+    this.googleMapsUrl,
+    this.siteUrl,
+    this.statusFuncionamento,
+    this.horariosFuncionamento = const [],
   });
 
   bool get temLocalizacao => latitude != null && longitude != null;
+  bool get origemGooglePlaces => placeId != null && placeId!.isNotEmpty;
 
-  String get enderecoResumo => [rua, numero, bairro, cidade]
-      .where((p) => p != null && p.isNotEmpty)
-      .join(', ');
+  String get enderecoResumo {
+    if (enderecoFormatado != null && enderecoFormatado!.isNotEmpty) {
+      return enderecoFormatado!;
+    }
+    return [rua, numero, bairro, cidade]
+        .where((p) => p != null && p.isNotEmpty)
+        .join(', ');
+  }
 
   factory Estabelecimentos.fromRow(Map<String, dynamic> row) {
     return Estabelecimentos(

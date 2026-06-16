@@ -205,6 +205,19 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
     if (ok == true) _recarregar();
   }
 
+  Future<void> _abrirEscalacao(Partida p, bool podeAlterar) async {
+    final mudou = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EscalacaoPage(
+          partida: p,
+          readOnly: !podeAlterar,
+        ),
+      ),
+    );
+    if (mudou == true) _recarregar();
+  }
+
   void _msg(String t) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
 
@@ -315,6 +328,35 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                 ),
               ),
               const SizedBox(height: 12),
+              _CampoEscalacaoCard(
+                partida: p,
+                podeAlterar: podeAlterar,
+                onTap: () => _abrirEscalacao(p, podeAlterar),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _Time(
+                      titulo: 'Time 1',
+                      cor: AppColors.info,
+                      membros: p.time1,
+                      onAdd: () => _adicionarMembro(p, Equipe.time1),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _Time(
+                      titulo: 'Time 2',
+                      cor: AppColors.accent,
+                      membros: p.time2,
+                      onAdd: () => _adicionarMembro(p, Equipe.time2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () => _convidarWhatsApp(p),
                 icon: const Icon(Icons.share_outlined),
@@ -339,45 +381,6 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   label: const Text('Entrar nesta partida'),
                 ),
               ],
-              const SizedBox(height: 20),
-              _Time(
-                titulo: 'Time 1',
-                cor: AppColors.info,
-                membros: p.time1,
-                onAdd: () => _adicionarMembro(p, Equipe.time1),
-              ),
-              const SizedBox(height: 16),
-              _Time(
-                titulo: 'Time 2',
-                cor: AppColors.accent,
-                membros: p.time2,
-                onAdd: () => _adicionarMembro(p, Equipe.time2),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final mudou = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EscalacaoPage(
-                        partida: p,
-                        readOnly: !podeAlterar,
-                      ),
-                    ),
-                  );
-                  if (mudou == true) _recarregar();
-                },
-                icon: Icon(
-                  podeAlterar
-                      ? Icons.grid_view_rounded
-                      : Icons.visibility_outlined,
-                ),
-                label: Text(
-                  podeAlterar
-                      ? 'Escalar time (${p.formato})'
-                      : 'Ver escalacao (${p.formato})',
-                ),
-              ),
               const SizedBox(height: 12),
               if (podeAlterar)
                 OutlinedButton.icon(
@@ -404,6 +407,111 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
           ],
         ),
       );
+}
+
+class _CampoEscalacaoCard extends StatelessWidget {
+  final Partida partida;
+  final bool podeAlterar;
+  final VoidCallback onTap;
+
+  const _CampoEscalacaoCard({
+    required this.partida,
+    required this.podeAlterar,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = podeAlterar
+        ? 'Escalar time (${partida.formato})'
+        : 'Ver escalacao (${partida.formato})';
+
+    return Semantics(
+      button: true,
+      label: texto,
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: AppColors.heroGradient,
+            ),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(26, 14, 26, 38),
+                      child: Image.asset(
+                        'lib/assets/img/futebol.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Color(0xD90E2342),
+                        ],
+                        stops: [0.48, 1],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 14,
+                    bottom: 14,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            podeAlterar
+                                ? Icons.grid_view_rounded
+                                : Icons.visibility_outlined,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            texto,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Time extends StatelessWidget {
@@ -433,17 +541,27 @@ class _Time extends StatelessWidget {
                 decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
-              Text(
-                titulo,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
+              Expanded(
+                child: Text(
+                  titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 6),
               Text(
                 '${membros.length} jogador(es)',
-                style: const TextStyle(color: AppColors.inkMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: AppColors.inkMuted,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -471,7 +589,13 @@ class _Time extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(m.nome)),
+                    Expanded(
+                      child: Text(
+                        m.nome,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     if (m.gols > 0) ...[
                       const Icon(
                         Icons.sports_soccer,
@@ -492,7 +616,11 @@ class _Time extends StatelessWidget {
           TextButton.icon(
             onPressed: onAdd,
             icon: const Icon(Icons.person_add_alt),
-            label: const Text('Adicionar jogador'),
+            label: const Text(
+              'Adicionar jogador',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
