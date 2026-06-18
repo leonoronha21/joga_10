@@ -140,8 +140,9 @@ class _AssinaturaPageState extends State<AssinaturaPage> {
         const SizedBox(height: 10),
         _beneficio(Icons.insights_outlined, 'Estatisticas avancadas'),
         _beneficio(Icons.groups_outlined, 'Gestao recorrente do grupo'),
+        _beneficio(Icons.emoji_events_outlined, 'Acesso aos campeonatos'),
+        _beneficio(Icons.percent_outlined, 'Rateios sem taxa'),
         _beneficio(Icons.auto_awesome_outlined, 'Conquistas exclusivas'),
-        _beneficio(Icons.calculate_outlined, 'Relatorios de rateio'),
         const SizedBox(height: 18),
         if (!assinaturaAtiva)
           ElevatedButton.icon(

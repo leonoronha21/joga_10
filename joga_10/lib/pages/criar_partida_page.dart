@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:joga_10/model/Estabelecimentos.dart';
+import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
-import 'package:joga_10/model/Quadras.dart';
+import 'package:joga_10/domain/services/recorrencia_partida.dart';
 import 'package:joga_10/repositories/estabelecimento_repository.dart';
 import 'package:joga_10/repositories/partida_repository.dart';
-import 'package:joga_10/repositories/quadra_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/contatos.dart';
@@ -21,15 +22,17 @@ class CriarPartidaPage extends StatefulWidget {
 
 class _CriarPartidaPageState extends State<CriarPartidaPage> {
   final _estabRepo = EstabelecimentoRepository();
-  final _quadraRepo = QuadraRepository();
   final _partidaRepo = PartidaRepository();
 
   List<Estabelecimentos> _estabs = [];
-  List<Quadras> _quadras = [];
   Estabelecimentos? _estabSel;
-  Quadras? _quadraSel;
   DateTime? _dataHora;
   String _duracao = '1h';
+  String _visibilidade = VisibilidadePartida.publica;
+  String _modalidade = ModalidadePartida.futebol;
+  String _formato = '5x5';
+  String _recorrencia = TipoRecorrenciaPartida.nenhuma;
+  DateTime? _recorrenciaAte;
   final List<PartidaMembro> _membros = [];
 
   bool _carregando = true;
@@ -59,15 +62,38 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     }
   }
 
-  Future<void> _onEstabChanged(Estabelecimentos? e) async {
+  void _onEstabChanged(Estabelecimentos? e) {
     setState(() {
       _estabSel = e;
-      _quadraSel = null;
-      _quadras = [];
     });
-    if (e == null) return;
-    final quadras = await _quadraRepo.listarPorEstabelecimento(e.id);
-    if (mounted) setState(() => _quadras = quadras);
+  }
+
+  void _alterarModalidade(String modalidade) {
+    setState(() {
+      _modalidade = modalidade;
+      _formato = ModalidadePartida.formatoPadrao(modalidade);
+    });
+  }
+
+  Future<void> _abrirMapa() async {
+    final local = _estabSel;
+    if (local == null) return;
+    final Uri uri;
+    if (local.googleMapsUrl != null && local.googleMapsUrl!.isNotEmpty) {
+      uri = Uri.parse(local.googleMapsUrl!);
+    } else {
+      final query = local.temLocalizacao
+          ? '${local.latitude},${local.longitude}'
+          : '${local.nome}, ${local.enderecoResumo}';
+      uri = Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': query,
+      });
+    }
+    final abriu = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!abriu && mounted) {
+      _msg('Não foi possível abrir o Google Maps.');
+    }
   }
 
   Future<void> _escolherDataHora() async {
@@ -87,7 +113,80 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     setState(() {
       _dataHora =
           DateTime(data.year, data.month, data.day, hora.hour, hora.minute);
+      if (_recorrencia != TipoRecorrenciaPartida.nenhuma &&
+          _recorrenciaAte == null) {
+        _recorrenciaAte = _fimPadraoRecorrencia(_dataHora!, _recorrencia);
+      }
     });
+  }
+
+  DateTime _fimPadraoRecorrencia(DateTime inicio, String recorrencia) {
+    switch (recorrencia) {
+      case TipoRecorrenciaPartida.diaria:
+        return inicio.add(const Duration(days: 7));
+      case TipoRecorrenciaPartida.semanal:
+        return inicio.add(const Duration(days: 28));
+      case TipoRecorrenciaPartida.mensal:
+        return DateTime(
+          inicio.year,
+          inicio.month + 3,
+          inicio.day,
+          inicio.hour,
+          inicio.minute,
+        );
+      default:
+        return inicio;
+    }
+  }
+
+  void _alterarRecorrencia(String tipo) {
+    setState(() {
+      _recorrencia = tipo;
+      _recorrenciaAte =
+          tipo == TipoRecorrenciaPartida.nenhuma || _dataHora == null
+              ? null
+              : _fimPadraoRecorrencia(_dataHora!, tipo);
+    });
+  }
+
+  Future<void> _escolherFimRecorrencia() async {
+    if (_dataHora == null) {
+      _msg('Escolha primeiro a data e a hora da partida.');
+      return;
+    }
+    final inicio = _dataHora!;
+    final data = await showDatePicker(
+      context: context,
+      initialDate:
+          _recorrenciaAte ?? _fimPadraoRecorrencia(inicio, _recorrencia),
+      firstDate: DateTime(inicio.year, inicio.month, inicio.day),
+      lastDate: inicio.add(const Duration(days: 365)),
+    );
+    if (data == null || !mounted) return;
+    setState(() {
+      _recorrenciaAte = DateTime(
+        data.year,
+        data.month,
+        data.day,
+        inicio.hour,
+        inicio.minute,
+      );
+    });
+  }
+
+  int get _totalOcorrencias {
+    if (_dataHora == null) return 0;
+    try {
+      return const RecorrenciaPartida()
+          .gerarDatas(
+            inicio: _dataHora!,
+            tipo: _recorrencia,
+            ate: _recorrenciaAte,
+          )
+          .length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<void> _adicionarJogador() async {
@@ -99,12 +198,17 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
   }
 
   Future<void> _salvar() async {
-    if (_estabSel == null || _quadraSel == null) {
-      _msg('Selecione o local e a quadra.');
+    if (_estabSel == null) {
+      _msg('Selecione o estabelecimento.');
       return;
     }
     if (_dataHora == null) {
       _msg('Escolha a data e a hora.');
+      return;
+    }
+    if (_recorrencia != TipoRecorrenciaPartida.nenhuma &&
+        _recorrenciaAte == null) {
+      _msg('Escolha até quando a partida deverá se repetir.');
       return;
     }
     final id = Sessao.instance.atual?.id;
@@ -116,12 +220,16 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
     try {
       await _partidaRepo.criar(
         idEstabelecimento: _estabSel!.id,
-        idQuadra: _quadraSel!.id,
         organizadorId: id,
         duracao: _duracao,
         dataHora: _dataHora!,
-        preco: _quadraSel!.preco,
+        preco: 0,
+        visibilidade: _visibilidade,
+        modalidade: _modalidade,
+        formato: _formato,
         membros: _membros,
+        recorrencia: _recorrencia,
+        recorrenciaAte: _recorrenciaAte,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -144,8 +252,60 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                _label('Modalidade'),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ModalidadePartida.futebol,
+                      icon: Icon(Icons.sports_soccer),
+                      label: Text('Futebol'),
+                    ),
+                    ButtonSegment(
+                      value: ModalidadePartida.volei,
+                      icon: Icon(
+                        Icons.sports_volleyball,
+                        key: Key('modalidadeVolei'),
+                      ),
+                      label: Text('Vôlei'),
+                    ),
+                  ],
+                  selected: {_modalidade},
+                  onSelectionChanged: (selecao) =>
+                      _alterarModalidade(selecao.first),
+                ),
+                const SizedBox(height: 20),
+                _label('Visibilidade'),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: VisibilidadePartida.publica,
+                      icon: Icon(Icons.public),
+                      label: Text('Pública'),
+                    ),
+                    ButtonSegment(
+                      value: VisibilidadePartida.privada,
+                      icon: Icon(Icons.lock_outline),
+                      label: Text('Privada'),
+                    ),
+                  ],
+                  selected: {_visibilidade},
+                  onSelectionChanged: (selecao) =>
+                      setState(() => _visibilidade = selecao.first),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _visibilidade == VisibilidadePartida.publica
+                      ? 'Todos os usuários poderão encontrar e entrar na partida.'
+                      : 'Somente o organizador e participantes convidados terão acesso.',
+                  style: const TextStyle(
+                    color: AppColors.inkMuted,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 _label('Local'),
                 DropdownButtonFormField<Estabelecimentos>(
+                  key: const Key('estabelecimentoDropdown'),
                   initialValue: _estabSel,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -157,25 +317,28 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                       .toList(),
                   onChanged: _onEstabChanged,
                 ),
-                const SizedBox(height: 16),
-                _label('Quadra'),
-                DropdownButtonFormField<Quadras>(
-                  initialValue: _quadraSel,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.sports_soccer)),
-                  hint: Text(_estabSel == null
-                      ? 'Escolha um local primeiro'
-                      : 'Selecione a quadra'),
-                  items: _quadras
-                      .map((q) => DropdownMenuItem(
-                            value: q,
-                            child:
-                                Text('${q.nome} • ${formatarMoeda(q.preco)}'),
-                          ))
-                      .toList(),
-                  onChanged: (q) => setState(() => _quadraSel = q),
-                ),
+                if (_estabSel != null) ...[
+                  const SizedBox(height: 10),
+                  AppCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_estabSel!.enderecoResumo.isNotEmpty)
+                          Text(
+                            _estabSel!.enderecoResumo,
+                            style: const TextStyle(color: AppColors.inkMuted),
+                          ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _abrirMapa,
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('Validar local no Google Maps'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _label('Data e hora'),
                 InkWell(
@@ -207,6 +370,70 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                       .toList(),
                   onChanged: (d) => setState(() => _duracao = d ?? '1h'),
                 ),
+                const SizedBox(height: 16),
+                _label('Formato'),
+                SegmentedButton<String>(
+                  segments: _modalidade == ModalidadePartida.volei
+                      ? const [
+                          ButtonSegment(value: '6x6', label: Text('6x6')),
+                          ButtonSegment(value: '2x2', label: Text('2x2')),
+                        ]
+                      : const [
+                          ButtonSegment(value: '5x5', label: Text('5x5')),
+                          ButtonSegment(value: '7x7', label: Text('7x7')),
+                          ButtonSegment(value: '11x11', label: Text('11x11')),
+                        ],
+                  selected: {_formato},
+                  onSelectionChanged: (selecao) =>
+                      setState(() => _formato = selecao.first),
+                ),
+                const SizedBox(height: 16),
+                _label('Repetição'),
+                DropdownButtonFormField<String>(
+                  initialValue: _recorrencia,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.repeat),
+                  ),
+                  items: TipoRecorrenciaPartida.valores
+                      .map(
+                        (tipo) => DropdownMenuItem(
+                          value: tipo,
+                          child: Text(TipoRecorrenciaPartida.label(tipo)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (tipo) {
+                    if (tipo != null) _alterarRecorrencia(tipo);
+                  },
+                ),
+                if (_recorrencia != TipoRecorrenciaPartida.nenhuma) ...[
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: _escolherFimRecorrencia,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Repetir até',
+                        prefixIcon: Icon(Icons.event_repeat_outlined),
+                      ),
+                      child: Text(
+                        _recorrenciaAte == null
+                            ? 'Escolher data final'
+                            : formatarData(_recorrenciaAte!),
+                      ),
+                    ),
+                  ),
+                  if (_totalOcorrencias > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Serão criadas $_totalOcorrencias partidas com os mesmos participantes.',
+                      style: const TextStyle(
+                        color: AppColors.inkMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -239,8 +466,8 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
                         ),
                       ),
                       title: Text(m.nome),
-                      subtitle:
-                          Text(m.equipe == Equipe.time1 ? 'Time 1' : 'Time 2'),
+                      subtitle: Text(
+                          m.equipe == Equipe.time1 ? 'Equipe A' : 'Equipe B'),
                       trailing: IconButton(
                         icon:
                             const Icon(Icons.close, color: AppColors.inkMuted),
@@ -325,8 +552,8 @@ class _DialogJogadorState extends State<_DialogJogador> {
             const SizedBox(height: 8),
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: Equipe.time1, label: Text('Time 1')),
-                ButtonSegment(value: Equipe.time2, label: Text('Time 2')),
+                ButtonSegment(value: Equipe.time1, label: Text('Equipe A')),
+                ButtonSegment(value: Equipe.time2, label: Text('Equipe B')),
               ],
               selected: {_equipe},
               onSelectionChanged: (s) => setState(() => _equipe = s.first),

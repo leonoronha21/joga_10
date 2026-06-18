@@ -235,10 +235,16 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
             child: Column(
               children: [
                 SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: '5x5', label: Text('5x5')),
-                    ButtonSegment(value: '7x7', label: Text('7x7')),
-                  ],
+                  segments: widget.partida.isVolei
+                      ? const [
+                          ButtonSegment(value: '2x2', label: Text('2x2')),
+                          ButtonSegment(value: '6x6', label: Text('6x6')),
+                        ]
+                      : const [
+                          ButtonSegment(value: '5x5', label: Text('5x5')),
+                          ButtonSegment(value: '7x7', label: Text('7x7')),
+                          ButtonSegment(value: '11x11', label: Text('11x11')),
+                        ],
                   selected: {_formato},
                   onSelectionChanged:
                       widget.readOnly ? null : (s) => _trocarFormato(s.first),
@@ -308,14 +314,24 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                         foregroundDecoration: cand.isNotEmpty
                             ? BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.white, width: 3),
+                                border:
+                                    Border.all(color: Colors.white, width: 3),
                               )
                             : null,
                         child: Stack(
                           children: [
                             Positioned.fill(
-                                child: CustomPaint(painter: _CampoPainter())),
+                              child: Semantics(
+                                label: widget.partida.isVolei
+                                    ? 'Quadra de vôlei'
+                                    : 'Campo de futebol',
+                                child: CustomPaint(
+                                  painter: _CampoPainter(
+                                    volei: widget.partida.isVolei,
+                                  ),
+                                ),
+                              ),
+                            ),
                             for (final j in campo)
                               Positioned(
                                 left: (j.x * w) - 24,
@@ -422,8 +438,7 @@ class _BancoReservas extends StatelessWidget {
                         dragAnchorStrategy: pointerDragAnchorStrategy,
                         feedback:
                             Material(color: Colors.transparent, child: chip),
-                        childWhenDragging:
-                            Opacity(opacity: 0.3, child: chip),
+                        childWhenDragging: Opacity(opacity: 0.3, child: chip),
                         child: GestureDetector(
                           onLongPress: () => onLongPress(j),
                           child: chip,
@@ -487,10 +502,15 @@ class _ChipJogador extends StatelessWidget {
 }
 
 class _CampoPainter extends CustomPainter {
+  final bool volei;
+
+  const _CampoPainter({required this.volei});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final grama = Paint()..color = const Color(0xFF2E7D32);
+    final fundo = Paint()
+      ..color = volei ? const Color(0xFFE7A843) : const Color(0xFF2E7D32);
     final faixa = Paint()..color = Colors.white.withValues(alpha: 0.04);
     final linha = Paint()
       ..color = Colors.white.withValues(alpha: 0.85)
@@ -501,10 +521,12 @@ class _CampoPainter extends CustomPainter {
         Rect.fromLTWH(0, 0, w, h), const Radius.circular(12));
     canvas.save();
     canvas.clipRRect(rrect);
-    canvas.drawRRect(rrect, grama);
-    for (var i = 0; i < 8; i++) {
-      if (i.isEven) {
-        canvas.drawRect(Rect.fromLTWH(0, h / 8 * i, w, h / 8), faixa);
+    canvas.drawRRect(rrect, fundo);
+    if (!volei) {
+      for (var i = 0; i < 8; i++) {
+        if (i.isEven) {
+          canvas.drawRect(Rect.fromLTWH(0, h / 8 * i, w, h / 8), faixa);
+        }
       }
     }
     canvas.restore();
@@ -515,6 +537,24 @@ class _CampoPainter extends CustomPainter {
       linha,
     );
     canvas.drawLine(Offset(6, h / 2), Offset(w - 6, h / 2), linha);
+    if (volei) {
+      final ataque = h * 0.18;
+      canvas.drawLine(
+        Offset(6, h / 2 - ataque),
+        Offset(w - 6, h / 2 - ataque),
+        linha,
+      );
+      canvas.drawLine(
+        Offset(6, h / 2 + ataque),
+        Offset(w - 6, h / 2 + ataque),
+        linha,
+      );
+      final rede = Paint()
+        ..color = Colors.white
+        ..strokeWidth = 5;
+      canvas.drawLine(Offset(4, h / 2), Offset(w - 4, h / 2), rede);
+      return;
+    }
     canvas.drawCircle(Offset(w / 2, h / 2), w * 0.13, linha);
     canvas.drawCircle(Offset(w / 2, h / 2), 3, Paint()..color = Colors.white);
 

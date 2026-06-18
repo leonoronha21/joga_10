@@ -6,8 +6,10 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/pagamento_provider_contract.dart';
+import 'package:joga_10/domain/services/beneficios_assinatura.dart';
 import 'package:joga_10/domain/services/calculadora_rateio.dart';
 import 'package:joga_10/model/Monetizacao.dart';
+import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/Rateio.dart';
 import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
@@ -17,16 +19,19 @@ import 'package:joga_10/services/sessao.dart';
 class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   final DatabaseProvider _database;
   final CalculadoraRateio _calculadora;
+  final BeneficiosAssinatura _beneficios;
   final PagamentoProviderContract _pagamentos;
   final FirebaseFirestore? _firestoreConfigurado;
 
   MonetizacaoRepository({
     DatabaseProvider? database,
     CalculadoraRateio calculadora = const CalculadoraRateio(),
+    BeneficiosAssinatura beneficios = const BeneficiosAssinatura(),
     PagamentoProviderContract pagamentos = const PagamentoDemoProvider(),
     FirebaseFirestore? firestore,
   })  : _database = database ?? AppDatabase.instance,
         _calculadora = calculadora,
+        _beneficios = beneficios,
         _pagamentos = pagamentos,
         _firestoreConfigurado = firestore;
 
@@ -66,8 +71,8 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   Future<PartidaRateio> criarOuAtualizarRateio({
     required int partidaId,
     required double valorQuadra,
-    required double taxaPercentual,
   }) async {
+    final taxaPercentual = await _taxaRateioDaPartida(partidaId);
     if (FirestoreCompatIds.habilitado) {
       return _criarOuAtualizarRateioFirestore(
         partidaId: partidaId,
@@ -186,6 +191,62 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
     });
 
     return (await buscarRateioPorPartida(partidaId))!;
+  }
+
+  Future<double> _taxaRateioDaPartida(int partidaId) async {
+    if (FirestoreCompatIds.habilitado) {
+      final partida = await _partidaDocPorId(partidaId);
+      final organizadorUid = partida?.data()?['organizadorId'] as String?;
+      if (organizadorUid != FirestoreCompatIds.usuarioUid) {
+        return BeneficiosAssinatura.taxaRateioFree;
+      }
+      final usuarioId = Sessao.instance.atual?.id;
+      final assinatura =
+          usuarioId == null ? null : await buscarAssinatura(usuarioId);
+      return _beneficios.taxaRateio(assinatura);
+    }
+
+    if (partidaId < 0) {
+      final partida = LocalDemoData.instance.buscarPartida(partidaId);
+      final assinatura = partida?.organizadorId == LocalDemoData.adminId
+          ? LocalDemoData.instance.assinatura
+          : null;
+      return _beneficios.taxaRateio(assinatura);
+    }
+
+    final conn = await _conn;
+    final rows = await conn.execute(
+      Sql.named('''
+        SELECT
+          a.status,
+          a.inicio_em,
+          a.fim_em,
+          a.origem,
+          a.id AS assinatura_id,
+          a.usuario_id,
+          pl.*
+        FROM partida p
+        LEFT JOIN assinatura_usuario a ON a.usuario_id = p.organizador_id
+        LEFT JOIN plano_assinatura pl ON pl.id = a.plano_id
+        WHERE p.id = @partida
+      '''),
+      parameters: {'partida': partidaId},
+    );
+    if (rows.isEmpty) throw StateError('Partida não encontrada.');
+    final row = rows.first.toColumnMap();
+    if (row['assinatura_id'] == null || row['id'] == null) {
+      return BeneficiosAssinatura.taxaRateioFree;
+    }
+    final assinatura = AssinaturaUsuario(
+      id: row['assinatura_id'] as int,
+      usuarioId: row['usuario_id'] as int,
+      plano: PlanoAssinatura.fromRow(row),
+      status: row['status'] as String,
+      inicioEm: row['inicio_em'] as DateTime,
+      fimEm: row['fim_em'] as DateTime?,
+      origem: row['origem'] as String,
+    );
+    return _beneficios.taxaRateio(assinatura);
   }
 
   @override
@@ -525,6 +586,17 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       throw StateError('Partida não encontrada.');
     }
     final organizadorId = partidaDoc.data()?['organizadorId'] as String?;
+    final visibilidade = (partidaDoc.data()?['visibilidade'] as String?) ??
+        VisibilidadePartida.publica;
+    final participantesUids = (partidaDoc.data()?['participantesUids'] as List?)
+            ?.whereType<String>()
+            .toList() ??
+        const <String>[];
+    final conviteContatoKeys =
+        (partidaDoc.data()?['conviteContatoKeys'] as List?)
+                ?.whereType<String>()
+                .toList() ??
+            const <String>[];
     final membros = await partidaDoc.reference.collection('membros').get();
     final valores = _calculadora.calcular(
       valorQuadra: valorQuadra,
@@ -539,6 +611,10 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       {
         'partidaId': partidaDoc.id,
         'organizadorId': organizadorId,
+        'visibilidade': visibilidade,
+        'participantesUids': participantesUids,
+        if (conviteContatoKeys.isNotEmpty)
+          'conviteContatoKeys': conviteContatoKeys,
         'valorQuadra': valorQuadra,
         'taxaPercentual': taxaPercentual,
         'status': RateioStatus.aberto,
@@ -554,16 +630,21 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           : (uid == meuUid
               ? (Sessao.instance.atual?.id ?? LocalDemoData.adminId)
               : FirestoreCompatIds.registrar('usuarios', uid));
-      final cobrancaRef =
-          _firestore.collection('cobrancas').doc('${partidaDoc.id}_${membro.id}');
+      final cobrancaRef = _firestore
+          .collection('cobrancas')
+          .doc('${partidaDoc.id}_${membro.id}');
       final existente = await cobrancaRef.get();
-      final jaPago =
-          existente.exists && existente.data()?['status'] == CobrancaStatus.pago;
+      final jaPago = existente.exists &&
+          existente.data()?['status'] == CobrancaStatus.pago;
       batch.set(
         cobrancaRef,
         {
           'rateioPartidaId': partidaDoc.id,
           'organizadorId': organizadorId,
+          'visibilidade': visibilidade,
+          'participantesUids': participantesUids,
+          if (conviteContatoKeys.isNotEmpty)
+            'conviteContatoKeys': conviteContatoKeys,
           'partidaMembroId': FirestoreCompatIds.registrar(
               'partidas/${partidaDoc.id}/membros', membro.id),
           'idUserCompat': idUserCompat,

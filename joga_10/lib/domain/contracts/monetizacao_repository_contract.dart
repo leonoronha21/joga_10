@@ -7,7 +7,6 @@ abstract interface class MonetizacaoRepositoryContract {
   Future<PartidaRateio> criarOuAtualizarRateio({
     required int partidaId,
     required double valorQuadra,
-    required double taxaPercentual,
   });
 
   Future<void> atualizarStatusCobranca(int cobrancaId, String status);

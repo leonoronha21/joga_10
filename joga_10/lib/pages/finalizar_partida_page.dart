@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
+import 'package:joga_10/model/Postagem.dart';
 import 'package:joga_10/repositories/partida_repository.dart';
+import 'package:joga_10/repositories/postagem_repository.dart';
+import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/widgets/common.dart';
 
@@ -17,6 +20,9 @@ class FinalizarPartidaPage extends StatefulWidget {
 class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
   final _repo = PartidaRepository();
   final Map<int, int> _gols = {}; // membroId -> gols
+  int _setsEquipeA = 0;
+  int _setsEquipeB = 0;
+  bool _compartilhar = true;
   bool _salvando = false;
 
   @override
@@ -40,10 +46,29 @@ class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
     try {
       await _repo.finalizarComPlacar(
         partidaId: widget.partida.id,
-        placarTime1: _placar(Equipe.time1),
-        placarTime2: _placar(Equipe.time2),
-        golsPorMembro: _gols,
+        placarTime1:
+            widget.partida.isVolei ? _setsEquipeA : _placar(Equipe.time1),
+        placarTime2:
+            widget.partida.isVolei ? _setsEquipeB : _placar(Equipe.time2),
+        golsPorMembro: widget.partida.isVolei ? const {} : _gols,
       );
+      if (_compartilhar && widget.partida.publica) {
+        final usuarioId = await Sessao.instance.usuarioId;
+        if (usuarioId != null) {
+          try {
+            await PostagemRepository().criar(
+              autorId: usuarioId,
+              texto: widget.partida.isVolei
+                  ? 'Partida de vôlei concluída! 🏐'
+                  : 'Partida concluída! ⚽',
+              partidaId: widget.partida.id,
+              visibilidade: VisibilidadePostagem.amigos,
+            );
+          } catch (_) {
+            // O resultado da partida permanece salvo mesmo se o feed falhar.
+          }
+        }
+      }
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (_) {
@@ -78,20 +103,73 @@ class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _ladoPlacar('Time 1', _placar(Equipe.time1), AppColors.accent),
+                _ladoPlacar(
+                  'Equipe A',
+                  widget.partida.isVolei ? _setsEquipeA : _placar(Equipe.time1),
+                  AppColors.accent,
+                ),
                 const Text('x',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w800)),
-                _ladoPlacar('Time 2', _placar(Equipe.time2), AppColors.warning),
+                _ladoPlacar(
+                  'Equipe B',
+                  widget.partida.isVolei ? _setsEquipeB : _placar(Equipe.time2),
+                  AppColors.warning,
+                ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          _secaoTime('Time 1', time1, AppColors.accent),
+          if (widget.partida.isVolei)
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Sets vencidos',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  _linhaSets(
+                    'Equipe A',
+                    _setsEquipeA,
+                    AppColors.accent,
+                    (valor) => setState(() => _setsEquipeA = valor),
+                  ),
+                  const Divider(height: 20),
+                  _linhaSets(
+                    'Equipe B',
+                    _setsEquipeB,
+                    AppColors.warning,
+                    (valor) => setState(() => _setsEquipeB = valor),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            _secaoTime('Equipe A', time1, AppColors.accent),
+            const SizedBox(height: 16),
+            _secaoTime('Equipe B', time2, AppColors.warning),
+          ],
           const SizedBox(height: 16),
-          _secaoTime('Time 2', time2, AppColors.warning),
+          if (widget.partida.publica)
+            AppCard(
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _compartilhar,
+                onChanged: (valor) => setState(() => _compartilhar = valor),
+                secondary: const Icon(Icons.dynamic_feed_outlined),
+                title: const Text(
+                  'Compartilhar no social',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'Publica o placar e o resumo para seus amigos.',
+                ),
+              ),
+            ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _salvando ? null : _finalizar,
@@ -117,7 +195,34 @@ class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
         const SizedBox(height: 4),
         Text('$gols',
             style: const TextStyle(
-                color: Colors.white, fontSize: 40, fontWeight: FontWeight.w800)),
+                color: Colors.white,
+                fontSize: 40,
+                fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+
+  Widget _linhaSets(
+    String titulo,
+    int valor,
+    Color cor,
+    ValueChanged<int> onChanged,
+  ) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            titulo,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        _StepperGols(valor: valor, onChanged: onChanged),
       ],
     );
   }
@@ -132,7 +237,8 @@ class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
               Container(
                   width: 10,
                   height: 10,
-                  decoration: BoxDecoration(color: cor, shape: BoxShape.circle)),
+                  decoration:
+                      BoxDecoration(color: cor, shape: BoxShape.circle)),
               const SizedBox(width: 8),
               Text(titulo,
                   style: const TextStyle(
@@ -169,9 +275,8 @@ class _FinalizarPartidaPageState extends State<FinalizarPartidaPage> {
           Expanded(child: Text(m.nome)),
           _StepperGols(
             valor: gols,
-            onChanged: m.id == null
-                ? null
-                : (v) => setState(() => _gols[m.id!] = v),
+            onChanged:
+                m.id == null ? null : (v) => setState(() => _gols[m.id!] = v),
           ),
         ],
       ),
@@ -200,8 +305,8 @@ class _StepperGols extends StatelessWidget {
           width: 28,
           child: Text('$valor',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, fontSize: 16)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         ),
         IconButton(
           visualDensity: VisualDensity.compact,

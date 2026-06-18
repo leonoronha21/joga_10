@@ -46,6 +46,34 @@ void main() {
       expect(resultado.resultado, ResultadoParticipacao.jaParticipa);
       expect(partidas.equipeAdicionada, isNull);
     });
+
+    test('respeita o limite de duas pessoas por equipe no vôlei 2x2', () async {
+      final partidas = _PartidaRepositoryFake();
+      final casoDeUso = ParticiparDaPartida(
+        partidas: partidas,
+        sessao: _SessaoFake(_usuario),
+      );
+      final partida = Partida(
+        id: 1,
+        organizadorId: 99,
+        dataHora: DateTime(2026, 6, 8),
+        status: PartidaStatus.agendada,
+        preco: 100,
+        modalidade: ModalidadePartida.volei,
+        formato: '2x2',
+        membros: [
+          PartidaMembro(equipe: Equipe.time1, nome: 'A1'),
+          PartidaMembro(equipe: Equipe.time1, nome: 'A2'),
+          PartidaMembro(equipe: Equipe.time2, nome: 'B1'),
+          PartidaMembro(equipe: Equipe.time2, nome: 'B2'),
+        ],
+      );
+
+      final resultado = await casoDeUso.execute(partida);
+
+      expect(resultado.resultado, ResultadoParticipacao.timesCompletos);
+      expect(partidas.equipeAdicionada, isNull);
+    });
   });
 }
 

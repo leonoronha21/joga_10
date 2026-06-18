@@ -57,7 +57,9 @@ class PartidaConviteService implements PartidaConviteContract {
 
   @override
   String mensagemConvite(Partida partida) {
-    final nome = partida.quadraNome ?? 'Partida #${partida.id}';
+    final nome = partida.estabelecimentoNome ??
+        partida.quadraNome ??
+        'Partida #${partida.id}';
     final data = formatarDataHora(partida.dataHora);
     return 'Bora jogar? Entre na partida #${partida.id} - $nome em $data: ${linkDaPartida(partida.id)}';
   }

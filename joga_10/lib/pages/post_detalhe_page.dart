@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/model/Comentario.dart';
+import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/Postagem.dart';
 import 'package:joga_10/repositories/comentario_repository.dart';
 import 'package:joga_10/services/sessao.dart';
@@ -10,6 +11,7 @@ import 'package:joga_10/widgets/common.dart';
 
 class PostDetalhePage extends StatefulWidget {
   final Postagem postagem;
+
   const PostDetalhePage({super.key, required this.postagem});
 
   @override
@@ -59,9 +61,11 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
 
   @override
   Widget build(BuildContext context) {
-    final p = widget.postagem;
+    final post = widget.postagem;
     return Scaffold(
-      appBar: AppBar(title: const Text('Lance')),
+      appBar: AppBar(
+        title: Text(post.isAtividade ? 'Atividade' : 'Publicação'),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -82,56 +86,83 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
                               backgroundColor:
                                   AppColors.primary.withValues(alpha: 0.15),
                               child: Text(
-                                p.autorNome.isNotEmpty
-                                    ? p.autorNome[0].toUpperCase()
+                                post.autorNome.isNotEmpty
+                                    ? post.autorNome[0].toUpperCase()
                                     : '?',
                                 style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700),
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(p.autorNome,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    post.autorNome,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                                Text(tempoAtras(p.criadoEm),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    tempoAtras(post.criadoEm),
                                     style: const TextStyle(
-                                        color: AppColors.inkMuted,
-                                        fontSize: 12)),
-                              ],
+                                      color: AppColors.inkMuted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              post.publica
+                                  ? Icons.public
+                                  : Icons.people_outline,
+                              size: 17,
+                              color: AppColors.inkMuted,
                             ),
                           ],
                         ),
                       ),
-                      if (p.texto != null && p.texto!.isNotEmpty)
+                      if (post.isAtividade) _atividadeResumo(post),
+                      if (post.texto != null && post.texto!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          child: Text(p.texto!,
-                              style: const TextStyle(fontSize: 15)),
+                          child: Text(
+                            post.texto!,
+                            style: const TextStyle(fontSize: 15),
+                          ),
                         ),
-                      if (p.fotoUrl != null)
-                        Image.network(p.fotoUrl!,
-                            width: double.infinity,
-                            height: 260,
-                            fit: BoxFit.cover)
-                      else if (p.foto != null)
-                        Image.memory(p.foto!,
-                            width: double.infinity,
-                            height: 260,
-                            fit: BoxFit.cover),
+                      if (post.fotoUrl != null)
+                        Image.network(
+                          post.fotoUrl!,
+                          width: double.infinity,
+                          height: 260,
+                          fit: BoxFit.cover,
+                        )
+                      else if (post.foto != null)
+                        Image.memory(
+                          post.foto!,
+                          width: double.infinity,
+                          height: 260,
+                          fit: BoxFit.cover,
+                        ),
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            const Icon(Icons.favorite,
-                                color: AppColors.danger, size: 18),
+                            const Icon(
+                              Icons.thumb_up_alt,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
-                            Text('${p.curtidas}',
-                                style: const TextStyle(
-                                    color: AppColors.inkMuted)),
+                            Text(
+                              '${post.curtidas} aplausos',
+                              style: const TextStyle(color: AppColors.inkMuted),
+                            ),
                           ],
                         ),
                       ),
@@ -139,25 +170,28 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Comentários',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const Text(
+                  'Comentários',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
                 const SizedBox(height: 8),
                 FutureBuilder<List<Comentario>>(
                   future: _futuro,
-                  builder: (context, snap) {
-                    if (snap.connectionState != ConnectionState.done) {
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
                       return const Padding(
                         padding: EdgeInsets.all(20),
                         child: LoadingView(),
                       );
                     }
-                    final comentarios = snap.data ?? [];
+                    final comentarios = snapshot.data ?? [];
                     if (comentarios.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Seja o primeiro a comentar.',
-                            style: TextStyle(color: AppColors.inkMuted)),
+                        child: Text(
+                          'Seja o primeiro a comentar.',
+                          style: TextStyle(color: AppColors.inkMuted),
+                        ),
                       );
                     }
                     return Column(
@@ -200,7 +234,60 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
     );
   }
 
-  Widget _comentarioTile(Comentario c) {
+  Widget _atividadeResumo(Postagem post) {
+    final volei = post.atividadeModalidade == ModalidadePartida.volei;
+    final cor = volei ? const Color(0xFF2563EB) : AppColors.primary;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            volei ? Icons.sports_volleyball : Icons.sports_soccer,
+            color: cor,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  post.modalidadeLabel,
+                  style: TextStyle(color: cor, fontWeight: FontWeight.w800),
+                ),
+                if (post.atividadeLocal != null)
+                  Text(
+                    post.atividadeLocal!,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                if (post.atividadeDataHora != null)
+                  Text(
+                    formatarDataHora(post.atividadeDataHora!),
+                    style: const TextStyle(
+                      color: AppColors.inkMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (post.atividadePlacarEquipeA != null &&
+              post.atividadePlacarEquipeB != null)
+            Text(
+              '${post.atividadePlacarEquipeA} x ${post.atividadePlacarEquipeB}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _comentarioTile(Comentario comentario) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -210,9 +297,14 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
             radius: 16,
             backgroundColor: AppColors.inkMuted.withValues(alpha: 0.15),
             child: Text(
-              c.autorNome.isNotEmpty ? c.autorNome[0].toUpperCase() : '?',
+              comentario.autorNome.isNotEmpty
+                  ? comentario.autorNome[0].toUpperCase()
+                  : '?',
               style: const TextStyle(
-                  color: AppColors.ink, fontWeight: FontWeight.w700, fontSize: 13),
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -222,17 +314,25 @@ class _PostDetalhePageState extends State<PostDetalhePage> {
               children: [
                 Row(
                   children: [
-                    Text(c.autorNome,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13)),
+                    Text(
+                      comentario.autorNome,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Text(tempoAtras(c.criadoEm),
-                        style: const TextStyle(
-                            color: AppColors.inkMuted, fontSize: 11)),
+                    Text(
+                      tempoAtras(comentario.criadoEm),
+                      style: const TextStyle(
+                        color: AppColors.inkMuted,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(c.texto),
+                Text(comentario.texto),
               ],
             ),
           ),

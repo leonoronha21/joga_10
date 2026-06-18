@@ -10,12 +10,19 @@ abstract interface class PartidaRepositoryContract {
     required DateTime dataHora,
     String status = PartidaStatus.agendada,
     required double preco,
+    String visibilidade = VisibilidadePartida.publica,
+    String modalidade = ModalidadePartida.futebol,
+    String? formato,
     List<PartidaMembro> membros = const [],
+    String recorrencia = 'NENHUMA',
+    DateTime? recorrenciaAte,
   });
 
   Future<List<Partida>> listarTodas();
 
   Future<List<Partida>> listarPorUsuario(int userId);
+
+  Future<List<Partida>> listarPublicas();
 
   Future<List<Partida>> listarPorUsuarioEStatus(int userId, String status);
 

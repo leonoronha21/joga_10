@@ -17,7 +17,6 @@ Future<void> main() async {
     final rateio = await monetizacaoRepo.criarOuAtualizarRateio(
       partidaId: partida.id,
       valorQuadra: partida.preco,
-      taxaPercentual: 5,
     );
 
     if (rateio.cobrancas.length != partida.membros.length) {

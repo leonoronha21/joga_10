@@ -5,9 +5,13 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/domain/contracts/media_storage_contract.dart';
+import 'package:joga_10/model/Partida.dart';
+import 'package:joga_10/model/Postagem.dart';
+import 'package:joga_10/repositories/partida_repository.dart';
 import 'package:joga_10/repositories/postagem_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_theme.dart';
+import 'package:joga_10/util/format.dart';
 
 class CriarPostPage extends StatefulWidget {
   const CriarPostPage({super.key});
@@ -18,10 +22,34 @@ class CriarPostPage extends StatefulWidget {
 
 class _CriarPostPageState extends State<CriarPostPage> {
   final _repo = PostagemRepository();
+  final _partidaRepo = PartidaRepository();
   final _texto = TextEditingController();
   final _picker = ImagePicker();
   Uint8List? _foto;
+  List<Partida> _partidas = [];
+  Partida? _partida;
+  String _visibilidade = VisibilidadePostagem.publico;
   bool _salvando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPartidas();
+  }
+
+  Future<void> _carregarPartidas() async {
+    final id = await Sessao.instance.usuarioId;
+    if (id == null) return;
+    final partidas = await _partidaRepo.listarPorUsuarioEStatus(
+      id,
+      PartidaStatus.finalizada,
+    );
+    if (mounted) {
+      setState(() {
+        _partidas = partidas.where((partida) => partida.publica).toList();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -79,8 +107,8 @@ class _CriarPostPageState extends State<CriarPostPage> {
   }
 
   Future<void> _publicar() async {
-    if (_texto.text.trim().isEmpty && _foto == null) {
-      _msg('Escreva algo ou adicione uma foto.');
+    if (_texto.text.trim().isEmpty && _foto == null && _partida == null) {
+      _msg('Escreva algo, adicione uma foto ou vincule uma partida.');
       return;
     }
     final id = Sessao.instance.atual?.id;
@@ -106,6 +134,8 @@ class _CriarPostPageState extends State<CriarPostPage> {
         texto: _texto.text.trim().isEmpty ? null : _texto.text.trim(),
         foto: _foto,
         fotoUrl: fotoUrl,
+        partidaId: _partida?.id,
+        visibilidade: _visibilidade,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -122,16 +152,71 @@ class _CriarPostPageState extends State<CriarPostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Novo lance')),
+      appBar: AppBar(title: const Text('Nova publicação')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          const Text(
+            'Quem pode ver',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: VisibilidadePostagem.publico,
+                icon: Icon(Icons.public),
+                label: Text('Público'),
+              ),
+              ButtonSegment(
+                value: VisibilidadePostagem.amigos,
+                icon: Icon(Icons.people_outline),
+                label: Text('Amigos'),
+              ),
+            ],
+            selected: {_visibilidade},
+            onSelectionChanged: (selecao) =>
+                setState(() => _visibilidade = selecao.first),
+          ),
+          const SizedBox(height: 20),
+          DropdownButtonFormField<Partida>(
+            initialValue: _partida,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Vincular atividade (opcional)',
+              prefixIcon: Icon(Icons.emoji_events_outlined),
+            ),
+            hint: const Text('Selecione uma partida finalizada'),
+            items: _partidas
+                .map(
+                  (partida) => DropdownMenuItem(
+                    value: partida,
+                    child: Text(
+                      '${ModalidadePartida.label(partida.modalidade)} · '
+                      '${formatarData(partida.dataHora)} · '
+                      '${partida.placarTime1 ?? 0} x ${partida.placarTime2 ?? 0}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (partida) => setState(() => _partida = partida),
+          ),
+          if (_partida != null) ...[
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => setState(() => _partida = null),
+              icon: const Icon(Icons.link_off, size: 18),
+              label: const Text('Remover atividade vinculada'),
+            ),
+          ],
+          const SizedBox(height: 16),
           TextField(
             controller: _texto,
             maxLines: 5,
             minLines: 3,
             decoration: const InputDecoration(
-              hintText: 'O que rolou na pelada? Conta pra galera...',
+              hintText: 'Conte como foi o jogo ou compartilhe uma novidade...',
               alignLabelWithHint: true,
             ),
           ),

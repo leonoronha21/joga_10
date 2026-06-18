@@ -76,10 +76,10 @@ class _LoginPageState extends State<LoginPage> {
     final texto = erro.toString();
     if (texto.contains('sign_in_failed') ||
         texto.contains('ApiException: 10')) {
-      return 'Login Google ainda nao esta habilitado para este app no Firebase.';
+      return 'Login Google ainda não está habilitado para este app.';
     }
     if (texto.contains('permission-denied')) {
-      return 'Login concluido, mas o Firestore bloqueou o perfil.';
+      return 'Login concluído, mas não foi possível sincronizar o perfil.';
     }
     return 'Nao foi possivel entrar com Google.';
   }

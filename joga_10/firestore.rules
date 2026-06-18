@@ -25,6 +25,31 @@ service cloud.firestore {
       && request.resource.data.ultimos4.size() == 4;
     }
 
+    function invitedByContact(data) {
+      return signedIn()
+        && 'conviteContatoKeys' in data
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && 'conviteContatoKey' in
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data
+        && data.conviteContatoKeys.hasAny([
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+            .data.conviteContatoKey
+        ]);
+    }
+
+    function canAccessMatch(data) {
+      return signedIn() && (
+        !('visibilidade' in data)
+        || data.visibilidade == 'PUBLICA'
+        || data.organizadorId == request.auth.uid
+        || (
+          'participantesUids' in data
+          && data.participantesUids.hasAny([request.auth.uid])
+        )
+        || invitedByContact(data)
+      );
+    }
+
     match /usuarios/{userId} {
       // Perfil privado: e-mail, telefone e endereço ficam visíveis só ao dono.
       allow read: if signedIn() && request.auth.uid == userId;
@@ -68,24 +93,51 @@ service cloud.firestore {
     }
 
     match /partidas/{partidaId} {
-      // Qualquer usuário autenticado pode ver as partidas demo.
-      allow read: if signedIn();
+      allow read: if canAccessMatch(resource.data);
       // Só o próprio organizador cria a partida em seu nome.
       allow create: if signedIn()
-        && request.resource.data.organizadorId == request.auth.uid;
+        && request.resource.data.organizadorId == request.auth.uid
+        && request.resource.data.visibilidade in ['PUBLICA', 'PRIVADA'];
       // Só o organizador altera a partida (status, placar, escalação).
-      allow update: if signedIn()
-        && resource.data.organizadorId == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.organizadorId == request.auth.uid
+        || (
+          (
+            resource.data.visibilidade == 'PUBLICA'
+            || invitedByContact(resource.data)
+          )
+          && changedOnly(['participantesUids', 'atualizadoEm'])
+          && request.resource.data.participantesUids.size()
+            == resource.data.participantesUids.size() + 1
+          && request.resource.data.participantesUids
+            .hasAll(resource.data.participantesUids)
+          && request.resource.data.participantesUids
+            .hasAll([request.auth.uid])
+        )
+      );
       allow delete: if false;
 
       match /membros/{membroId} {
-        allow read: if signedIn();
+        allow read: if canAccessMatch(
+          get(/databases/$(database)/documents/partidas/$(partidaId)).data
+        );
         // O organizador gerencia os membros; o próprio usuário pode entrar.
         // organizadorId é denormalizado no membro para evitar get() (que não
         // enxerga a partida criada no mesmo batch e ainda custa uma leitura).
         allow create: if signedIn() && (
           request.resource.data.organizadorId == request.auth.uid
-          || request.resource.data.usuarioId == request.auth.uid
+          || (
+            request.resource.data.usuarioId == request.auth.uid
+            && (
+              get(/databases/$(database)/documents/partidas/$(partidaId))
+                .data.visibilidade == 'PUBLICA'
+              || get(/databases/$(database)/documents/partidas/$(partidaId))
+                .data.participantesUids.hasAny([request.auth.uid])
+              || invitedByContact(
+                get(/databases/$(database)/documents/partidas/$(partidaId)).data
+              )
+            )
+          )
         );
         allow update: if signedIn() && (
           resource.data.organizadorId == request.auth.uid
@@ -185,9 +237,21 @@ service cloud.firestore {
 
     // ---- Social: feed ----
     match /postagens/{postagemId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+        !('visibilidade' in resource.data)
+        || resource.data.visibilidade == 'PUBLICO'
+        || resource.data.autorId == request.auth.uid
+        || (
+          'visivelPara' in resource.data
+          && resource.data.visivelPara.hasAny([request.auth.uid])
+        )
+      );
       allow create: if signedIn()
-        && request.resource.data.autorId == request.auth.uid;
+        && request.resource.data.autorId == request.auth.uid
+        && (
+          !('visibilidade' in request.resource.data)
+          || request.resource.data.visibilidade in ['PUBLICO', 'AMIGOS']
+        );
       allow update: if signedIn() && (
         (
           changedOnly(['curtidoPor'])
@@ -219,7 +283,20 @@ service cloud.firestore {
       allow delete: if false;
 
       match /comentarios/{comentarioId} {
-        allow read: if signedIn();
+        allow read: if signedIn() && (
+          !('visibilidade' in
+            get(/databases/$(database)/documents/postagens/$(postagemId)).data)
+          || get(/databases/$(database)/documents/postagens/$(postagemId))
+              .data.visibilidade == 'PUBLICO'
+          || get(/databases/$(database)/documents/postagens/$(postagemId))
+              .data.autorId == request.auth.uid
+          || (
+            'visivelPara' in
+              get(/databases/$(database)/documents/postagens/$(postagemId)).data
+            && get(/databases/$(database)/documents/postagens/$(postagemId))
+                .data.visivelPara.hasAny([request.auth.uid])
+          )
+        );
         allow create: if signedIn()
           && request.resource.data.autorId == request.auth.uid;
         allow update, delete: if false;
@@ -228,7 +305,7 @@ service cloud.firestore {
 
     // ---- Rateio (divisão de custos) ----
     match /rateios/{documentId} {
-      allow read: if signedIn();
+      allow read: if canAccessMatch(resource.data);
       // Só o organizador da partida cria/recalcula/fecha o rateio.
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
@@ -238,7 +315,7 @@ service cloud.firestore {
     }
 
     match /cobrancas/{documentId} {
-      allow read: if signedIn();
+      allow read: if canAccessMatch(resource.data);
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
       // Organizador atualiza qualquer cobrança; o próprio jogador quita a sua.

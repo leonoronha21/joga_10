@@ -11,6 +11,7 @@ import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/util/convite_privado.dart';
 
 /// Resultado possível de um cadastro.
 class UsuarioRepository implements UsuarioRepositoryContract {
@@ -170,6 +171,8 @@ class UsuarioRepository implements UsuarioRepositoryContract {
           'numero': numero?.trim(),
           'complemento': complemento?.trim(),
           'contato': contato?.trim(),
+          'conviteContatoKey':
+              chaveContatoConvite(contato) ?? FieldValue.delete(),
           'atualizadoEm': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),

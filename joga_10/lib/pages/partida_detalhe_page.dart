@@ -245,8 +245,11 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
               p.status == PartidaStatus.emAndamento;
           final meuNome = _nomeJogador(null);
           final jaEstou = _jaEstouNaPartida(p, _meuId, meuNome);
-          final podeEntrar =
-              podeAlterar && _meuId != null && !jaEstou && !_timesCompletos(p);
+          final podeEntrar = p.publica &&
+              podeAlterar &&
+              _meuId != null &&
+              !jaEstou &&
+              !_timesCompletos(p);
 
           return ListView(
             padding: const EdgeInsets.all(20),
@@ -259,7 +262,9 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       children: [
                         Expanded(
                           child: Text(
-                            p.quadraNome ?? 'Partida #${p.id}',
+                            p.estabelecimentoNome ??
+                                p.quadraNome ??
+                                'Partida #${p.id}',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
@@ -269,7 +274,8 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                         StatusBadge(p.status),
                       ],
                     ),
-                    if (p.estabelecimentoNome != null) ...[
+                    if (p.quadraNome != null &&
+                        p.estabelecimentoNome != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         p.estabelecimentoNome!,
@@ -277,6 +283,15 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       ),
                     ],
                     const SizedBox(height: 16),
+                    _info(
+                      p.isVolei ? Icons.sports_volleyball : Icons.sports_soccer,
+                      '${ModalidadePartida.label(p.modalidade)} · ${p.formato}',
+                    ),
+                    _info(
+                      p.publica ? Icons.public : Icons.lock_outline,
+                      '${VisibilidadePartida.label(p.visibilidade)} · '
+                      '${p.publica ? 'visível para todos' : 'somente convidados'}',
+                    ),
                     _info(Icons.tag_outlined, 'ID da partida: ${p.id}'),
                     _info(Icons.event, formatarDataHora(p.dataHora)),
                     if (p.duracao != null && p.duracao!.isNotEmpty)
@@ -304,7 +319,7 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Text(
-                                  'Time 1  ',
+                                  'Equipe A  ',
                                   style: TextStyle(color: AppColors.inkMuted),
                                 ),
                                 Text(
@@ -315,7 +330,7 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                                   ),
                                 ),
                                 const Text(
-                                  '  Time 2',
+                                  '  Equipe B',
                                   style: TextStyle(color: AppColors.inkMuted),
                                 ),
                               ],
@@ -339,18 +354,20 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                 children: [
                   Expanded(
                     child: _Time(
-                      titulo: 'Time 1',
+                      titulo: 'Equipe A',
                       cor: AppColors.info,
                       membros: p.time1,
+                      mostrarGols: !p.isVolei,
                       onAdd: () => _adicionarMembro(p, Equipe.time1),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _Time(
-                      titulo: 'Time 2',
+                      titulo: 'Equipe B',
                       cor: AppColors.accent,
                       membros: p.time2,
+                      mostrarGols: !p.isVolei,
                       onAdd: () => _adicionarMembro(p, Equipe.time2),
                     ),
                   ),
@@ -447,7 +464,9 @@ class _CampoEscalacaoCard extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(26, 14, 26, 38),
                       child: Image.asset(
-                        'lib/assets/img/futebol.png',
+                        partida.isVolei
+                            ? 'lib/assets/img/volei.png'
+                            : 'lib/assets/img/futebol.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -518,12 +537,14 @@ class _Time extends StatelessWidget {
   final String titulo;
   final Color cor;
   final List<PartidaMembro> membros;
+  final bool mostrarGols;
   final VoidCallback onAdd;
 
   const _Time({
     required this.titulo,
     required this.cor,
     required this.membros,
+    required this.mostrarGols,
     required this.onAdd,
   });
 
@@ -596,7 +617,7 @@ class _Time extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (m.gols > 0) ...[
+                    if (mostrarGols && m.gols > 0) ...[
                       const Icon(
                         Icons.sports_soccer,
                         size: 15,

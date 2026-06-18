@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:joga_10/domain/contracts/autenticacao_firebase_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/util/convite_privado.dart';
 
 class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
   final firebase_auth.FirebaseAuth? _authConfigurado;
@@ -74,6 +75,7 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
     final referencia =
         _firestore.collection('usuarios').doc(usuarioFirebase.uid);
     final existente = await referencia.get();
+    final contatoExistente = existente.data()?['contato'] as String?;
     final batch = _firestore.batch();
     batch.set(
       referencia,
@@ -88,6 +90,8 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
         'provedor': 'GOOGLE',
         'ambiente': 'DEMO',
         'ativo': true,
+        if (chaveContatoConvite(contatoExistente) != null)
+          'conviteContatoKey': chaveContatoConvite(contatoExistente),
         'atualizadoEm': FieldValue.serverTimestamp(),
         if (!existente.exists) 'criadoEm': FieldValue.serverTimestamp(),
       },

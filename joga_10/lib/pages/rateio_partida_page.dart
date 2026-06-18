@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/sessao_contract.dart';
+import 'package:joga_10/domain/services/beneficios_assinatura.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/Rateio.dart';
 import 'package:joga_10/theme/app_colors.dart';
@@ -23,6 +24,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
   late final SessaoContract _sessao;
   Future<PartidaRateio?>? _futuro;
   int? _usuarioId;
+  bool _assinaturaProAtiva = false;
   bool _salvando = false;
 
   bool get _souOrganizador => _usuarioId == widget.partida.organizadorId;
@@ -40,7 +42,14 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
 
   Future<void> _carregarUsuario() async {
     final id = await _sessao.usuarioId;
-    if (mounted) setState(() => _usuarioId = id);
+    final assinatura = id == null ? null : await _repo.buscarAssinatura(id);
+    if (mounted) {
+      setState(() {
+        _usuarioId = id;
+        _assinaturaProAtiva =
+            const BeneficiosAssinatura().assinaturaProAtiva(assinatura);
+      });
+    }
   }
 
   void _recarregar() => setState(() {
@@ -52,7 +61,9 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
       context: context,
       builder: (_) => _DialogConfigurarRateio(
         valorInicial: atual?.valorQuadra ?? widget.partida.preco,
-        taxaInicial: atual?.taxaPercentual ?? 5,
+        taxaPercentual: _assinaturaProAtiva
+            ? BeneficiosAssinatura.taxaRateioPro
+            : BeneficiosAssinatura.taxaRateioFree,
       ),
     );
     if (resultado == null) return;
@@ -62,7 +73,6 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
       await _repo.criarOuAtualizarRateio(
         partidaId: widget.partida.id,
         valorQuadra: resultado.valorQuadra,
-        taxaPercentual: resultado.taxaPercentual,
       );
       if (!mounted) return;
       _msg('Rateio atualizado.');
@@ -419,21 +429,19 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
 
 class _ConfiguracaoRateio {
   final double valorQuadra;
-  final double taxaPercentual;
 
   const _ConfiguracaoRateio({
     required this.valorQuadra,
-    required this.taxaPercentual,
   });
 }
 
 class _DialogConfigurarRateio extends StatefulWidget {
   final double valorInicial;
-  final double taxaInicial;
+  final double taxaPercentual;
 
   const _DialogConfigurarRateio({
     required this.valorInicial,
-    required this.taxaInicial,
+    required this.taxaPercentual,
   });
 
   @override
@@ -443,14 +451,12 @@ class _DialogConfigurarRateio extends StatefulWidget {
 
 class _DialogConfigurarRateioState extends State<_DialogConfigurarRateio> {
   late final TextEditingController _valor;
-  late double _taxa;
 
   @override
   void initState() {
     super.initState();
     _valor =
         TextEditingController(text: widget.valorInicial.toStringAsFixed(2));
-    _taxa = widget.taxaInicial.clamp(0, 20);
   }
 
   @override
@@ -478,17 +484,36 @@ class _DialogConfigurarRateioState extends State<_DialogConfigurarRateio> {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Taxa Joga10: ${_taxa.toStringAsFixed(1)}%',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            Slider(
-              value: _taxa,
-              min: 0,
-              max: 20,
-              divisions: 40,
-              label: '${_taxa.toStringAsFixed(1)}%',
-              onChanged: (valor) => setState(() => _taxa = valor),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (widget.taxaPercentual == 0
+                        ? AppColors.success
+                        : AppColors.info)
+                    .withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    widget.taxaPercentual == 0
+                        ? Icons.workspace_premium_outlined
+                        : Icons.percent,
+                    color: widget.taxaPercentual == 0
+                        ? AppColors.success
+                        : AppColors.info,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.taxaPercentual == 0
+                          ? 'Assinante Pro: rateio sem taxa.'
+                          : 'Plano Free: taxa de 2,5% sobre o rateio.',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -507,7 +532,6 @@ class _DialogConfigurarRateioState extends State<_DialogConfigurarRateio> {
               context,
               _ConfiguracaoRateio(
                 valorQuadra: valor,
-                taxaPercentual: _taxa,
               ),
             );
           },

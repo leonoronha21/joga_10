@@ -51,11 +51,16 @@ CREATE TABLE IF NOT EXISTS partida (
   data_hora TIMESTAMPTZ NOT NULL,
   status TEXT NOT NULL DEFAULT 'AGENDADA',
   preco NUMERIC(10,2) NOT NULL DEFAULT 0,
+  visibilidade TEXT NOT NULL DEFAULT 'PUBLICA',
+  modalidade TEXT NOT NULL DEFAULT 'FUTEBOL',
   formato TEXT NOT NULL DEFAULT '5x5',
   formacao_time1 TEXT,
   formacao_time2 TEXT,
   placar_time1 INTEGER,
   placar_time2 INTEGER,
+  grupo_recorrencia TEXT,
+  recorrencia TEXT NOT NULL DEFAULT 'NENHUMA',
+  recorrencia_ate TIMESTAMPTZ,
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -65,6 +70,7 @@ CREATE TABLE IF NOT EXISTS partida_membro (
   id_user INTEGER REFERENCES usuario(id) ON DELETE SET NULL,
   equipe TEXT NOT NULL DEFAULT 'TIME_1',
   nome TEXT NOT NULL,
+  telefone TEXT,
   pos_x DOUBLE PRECISION,
   pos_y DOUBLE PRECISION,
   gols INTEGER NOT NULL DEFAULT 0
@@ -74,7 +80,7 @@ CREATE TABLE IF NOT EXISTS partida_rateio (
   id SERIAL PRIMARY KEY,
   partida_id INTEGER NOT NULL UNIQUE REFERENCES partida(id) ON DELETE CASCADE,
   valor_quadra NUMERIC(10,2) NOT NULL,
-  taxa_percentual NUMERIC(5,2) NOT NULL DEFAULT 5,
+  taxa_percentual NUMERIC(5,2) NOT NULL DEFAULT 2.5,
   status TEXT NOT NULL DEFAULT 'ABERTO',
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -143,6 +149,8 @@ CREATE TABLE IF NOT EXISTS postagem (
   texto TEXT,
   foto BYTEA,
   partida_id INTEGER REFERENCES partida(id) ON DELETE SET NULL,
+  tipo TEXT NOT NULL DEFAULT 'PUBLICACAO',
+  visibilidade TEXT NOT NULL DEFAULT 'PUBLICO',
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -333,8 +341,8 @@ SELECT setval(
 
 INSERT INTO plano_assinatura (codigo, nome, descricao, preco_mensal)
 VALUES
-  ('FREE', 'Joga10 Free', 'Partidas, convites e rateios essenciais.', 0),
-  ('PRO', 'Joga10 Pro', 'Estatisticas, conquistas e gestao avancada do grupo.', 14.90)
+  ('FREE', 'Joga10 Free', 'Partidas e convites, com taxa de 2,5% em cada rateio.', 0),
+  ('PRO', 'Joga10 Pro', 'Campeonatos e rateios sem taxa.', 14.90)
 ON CONFLICT (codigo) DO UPDATE SET
   nome = EXCLUDED.nome,
   descricao = EXCLUDED.descricao,
@@ -389,6 +397,15 @@ WHERE e.nome = 'Arena Joga10 Local'
   AND NOT EXISTS (
     SELECT 1 FROM quadra q
     WHERE q.id_estabelecimento = e.id AND q.nome = 'Campo Society'
+  );
+
+INSERT INTO quadra (id_estabelecimento, nome, tipo_quadra, preco)
+SELECT e.id, 'Quadra de Volei', 'Volei', 100.00
+FROM estabelecimento e
+WHERE e.nome = 'Arena Joga10 Local'
+  AND NOT EXISTS (
+    SELECT 1 FROM quadra q
+    WHERE q.id_estabelecimento = e.id AND q.nome = 'Quadra de Volei'
   );
 
 INSERT INTO partida (

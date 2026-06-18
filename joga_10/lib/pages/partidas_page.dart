@@ -18,7 +18,7 @@ class PartidasPage extends StatefulWidget {
 
 class _PartidasPageState extends State<PartidasPage> {
   final _repo = PartidaRepository();
-  String _filtro = 'abertas'; // abertas | historico | todas
+  String _filtro = 'minhas';
   late Future<List<Partida>> _futuro;
 
   @override
@@ -29,32 +29,34 @@ class _PartidasPageState extends State<PartidasPage> {
 
   Future<List<Partida>> _carregar() async {
     final id = await Sessao.instance.usuarioId;
-    if (id == null) return [];
-    return _repo.listarPorUsuario(id);
-  }
-
-  List<Partida> _filtrar(List<Partida> todas) {
+    if (id == null) return const [];
     switch (_filtro) {
-      case 'abertas':
-        return todas
-            .where((p) =>
-                p.status == PartidaStatus.agendada ||
-                p.status == PartidaStatus.emAndamento)
-            .toList();
+      case 'publicas':
+        return _repo.listarPublicas();
       case 'historico':
-        return todas
-            .where((p) =>
-                p.status == PartidaStatus.finalizada ||
-                p.status == PartidaStatus.cancelada)
+        return (await _repo.listarPorUsuario(id))
+            .where((partida) =>
+                partida.status == PartidaStatus.finalizada ||
+                partida.status == PartidaStatus.cancelada)
             .toList();
       default:
-        return todas;
+        return (await _repo.listarPorUsuario(id))
+            .where((partida) =>
+                partida.status == PartidaStatus.agendada ||
+                partida.status == PartidaStatus.emAndamento)
+            .toList();
     }
   }
 
-  void _recarregar() => setState(() {
-        _futuro = _carregar();
-      });
+  void _recarregar() => setState(() => _futuro = _carregar());
+
+  void _selecionarFiltro(String filtro) {
+    if (_filtro == filtro) return;
+    setState(() {
+      _filtro = filtro;
+      _futuro = _carregar();
+    });
+  }
 
   Future<void> _abrirCriar() async {
     final criou = await Navigator.push<bool>(
@@ -66,12 +68,14 @@ class _PartidasPageState extends State<PartidasPage> {
 
   String get _msgVazio {
     switch (_filtro) {
-      case 'abertas':
-        return 'Nenhuma partida aberta. Toque em "Nova partida" para marcar um jogo.';
+      case 'minhas':
+        return 'Você ainda não participa de nenhuma partida aberta.';
+      case 'publicas':
+        return 'Nenhuma partida pública disponível no momento.';
       case 'historico':
         return 'Nenhuma partida no histórico ainda.';
       default:
-        return 'Toque em "Nova partida" para marcar seu primeiro jogo.';
+        return 'Crie sua primeira partida.';
     }
   }
 
@@ -89,7 +93,7 @@ class _PartidasPageState extends State<PartidasPage> {
         children: [
           GradientHeader(
             titulo: 'Partidas',
-            subtitulo: 'Organize e acompanhe seus jogos',
+            subtitulo: 'Organize seus jogos ou encontre partidas públicas',
             trailing: Image.asset(
               'lib/assets/img/Joga_transparente.png',
               height: 44,
@@ -100,11 +104,11 @@ class _PartidasPageState extends State<PartidasPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                _filtroBtn('Abertas', 'abertas'),
+                _filtroBtn('Minhas', 'minhas'),
+                const SizedBox(width: 8),
+                _filtroBtn('Públicas', 'publicas'),
                 const SizedBox(width: 8),
                 _filtroBtn('Histórico', 'historico'),
-                const SizedBox(width: 8),
-                _filtroBtn('Todas', 'todas'),
               ],
             ),
           ),
@@ -114,28 +118,28 @@ class _PartidasPageState extends State<PartidasPage> {
               onRefresh: () async => _recarregar(),
               child: FutureBuilder<List<Partida>>(
                 future: _futuro,
-                builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) {
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
                     return const LoadingView();
                   }
-                  if (snap.hasError) {
-                    return _erro();
-                  }
-                  final partidas = _filtrar(snap.data ?? []);
+                  if (snapshot.hasError) return _erro();
+                  final partidas = snapshot.data ?? [];
                   if (partidas.isEmpty) {
                     return ListView(
                       children: [
                         const SizedBox(height: 80),
                         EmptyState(
-                          icone: Icons.sports_soccer,
+                          icone: _filtro == 'publicas'
+                              ? Icons.public
+                              : Icons.sports,
                           titulo: 'Nenhuma partida',
                           mensagem: _msgVazio,
-                          acao: _filtro == 'historico'
-                              ? null
-                              : ElevatedButton(
+                          acao: _filtro == 'minhas'
+                              ? ElevatedButton(
                                   onPressed: _abrirCriar,
                                   child: const Text('Criar partida'),
-                                ),
+                                )
+                              : null,
                         ),
                       ],
                     );
@@ -144,14 +148,15 @@ class _PartidasPageState extends State<PartidasPage> {
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                     itemCount: partidas.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _PartidaCard(
-                      partida: partidas[i],
+                    itemBuilder: (_, index) => _PartidaCard(
+                      partida: partidas[index],
                       onTap: () async {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                PartidaDetalhePage(partidaId: partidas[i].id),
+                            builder: (_) => PartidaDetalhePage(
+                              partidaId: partidas[index].id,
+                            ),
                           ),
                         );
                         _recarregar();
@@ -173,7 +178,7 @@ class _PartidasPageState extends State<PartidasPage> {
           EmptyState(
             icone: Icons.cloud_off,
             titulo: 'Erro ao carregar',
-            mensagem: 'Não foi possível conectar ao banco de dados.',
+            mensagem: 'Não foi possível carregar as partidas.',
           ),
         ],
       );
@@ -182,7 +187,7 @@ class _PartidasPageState extends State<PartidasPage> {
     final ativo = _filtro == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _filtro = value),
+        onTap: () => _selecionarFiltro(value),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           alignment: Alignment.center,
@@ -209,10 +214,14 @@ class _PartidasPageState extends State<PartidasPage> {
 class _PartidaCard extends StatelessWidget {
   final Partida partida;
   final VoidCallback onTap;
+
   const _PartidaCard({required this.partida, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final icone =
+        partida.isVolei ? Icons.sports_volleyball : Icons.sports_soccer;
+    final cor = partida.isVolei ? const Color(0xFF2563EB) : AppColors.primary;
     return AppCard(
       onTap: onTap,
       child: Column(
@@ -223,11 +232,10 @@ class _PartidaCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
+                  color: cor.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child:
-                    const Icon(Icons.sports_soccer, color: AppColors.primary),
+                child: Icon(icone, color: cor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -235,54 +243,77 @@ class _PartidaCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      partida.quadraNome ?? 'Partida #${partida.id}',
+                      partida.estabelecimentoNome ??
+                          partida.quadraNome ??
+                          'Partida #${partida.id}',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
-                    if (partida.estabelecimentoNome != null)
-                      Text(
-                        partida.estabelecimentoNome!,
-                        style: const TextStyle(
-                            color: AppColors.inkMuted, fontSize: 13),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                       ),
+                    ),
+                    Text(
+                      '${ModalidadePartida.label(partida.modalidade)} · ${partida.formato}',
+                      style: TextStyle(
+                        color: cor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
               StatusBadge(partida.status),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                partida.publica ? Icons.public : Icons.lock_outline,
+                size: 16,
+                color: AppColors.inkMuted,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                VisibilidadePartida.label(partida.visibilidade),
+                style: const TextStyle(
+                  color: AppColors.inkMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           const Divider(height: 1),
           const SizedBox(height: 12),
           Row(
             children: [
               const Icon(Icons.event, size: 18, color: AppColors.inkMuted),
               const SizedBox(width: 6),
-              Text(formatarDataHora(partida.dataHora),
-                  style: const TextStyle(color: AppColors.inkMuted)),
+              Text(
+                formatarDataHora(partida.dataHora),
+                style: const TextStyle(color: AppColors.inkMuted),
+              ),
               const Spacer(),
               if (partida.temPlacar)
                 Text(
                   '${partida.placarTime1} x ${partida.placarTime2}',
                   style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 16),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 )
               else ...[
                 const Icon(Icons.group, size: 18, color: AppColors.inkMuted),
                 const SizedBox(width: 6),
-                Text('${partida.membros.length}',
-                    style: const TextStyle(color: AppColors.inkMuted)),
+                Text(
+                  '${partida.membros.length}',
+                  style: const TextStyle(color: AppColors.inkMuted),
+                ),
               ],
             ],
           ),
-          if (partida.preco > 0) ...[
-            const SizedBox(height: 6),
-            Text(
-              formatarMoeda(partida.preco),
-              style: const TextStyle(
-                  color: AppColors.primaryDark, fontWeight: FontWeight.w700),
-            ),
-          ],
         ],
       ),
     );

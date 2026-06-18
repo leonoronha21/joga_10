@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-// 'Type' colide entre cloud_firestore e postgres; escondemos o do Firestore.
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:postgres/postgres.dart';
 
@@ -8,6 +7,7 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/model/Postagem.dart';
 import 'package:joga_10/repositories/amizade_repository.dart';
+import 'package:joga_10/repositories/partida_repository.dart';
 import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/services/local_demo_data.dart';
 import 'package:joga_10/services/sessao.dart';
@@ -26,7 +26,32 @@ class PostagemRepository {
   FirebaseFirestore get _firestore =>
       _firestoreConfigurado ?? FirebaseFirestore.instance;
 
-  /// Feed: posts do próprio usuário + dos amigos (status ACEITO).
+  static const _selectPostagem = '''
+    SELECT p.id, p.autor_id, p.texto, p.foto, p.partida_id, p.criado_em,
+           p.tipo, p.visibilidade,
+           trim(u.primeiro_nome || ' ' || coalesce(u.segundo_nome, '')) AS autor_nome,
+           (SELECT count(*) FROM curtida c WHERE c.postagem_id = p.id) AS curtidas,
+           EXISTS(
+             SELECT 1 FROM curtida c
+             WHERE c.postagem_id = p.id AND c.usuario_id = @me
+           ) AS curtiu_eu,
+           (SELECT count(*) FROM comentario cm
+             WHERE cm.postagem_id = p.id) AS comentarios,
+           partida.modalidade AS atividade_modalidade,
+           coalesce(q.nome, e.nome) AS atividade_local,
+           partida.data_hora AS atividade_data_hora,
+           partida.duracao AS atividade_duracao,
+           partida.placar_time1 AS atividade_placar_equipe_a,
+           partida.placar_time2 AS atividade_placar_equipe_b,
+           (SELECT count(*) FROM partida_membro pm
+             WHERE pm.partida_id = partida.id) AS atividade_participantes
+    FROM postagem p
+    JOIN usuario u ON u.id = p.autor_id
+    LEFT JOIN partida ON partida.id = p.partida_id
+    LEFT JOIN quadra q ON q.id = partida.id_quadra
+    LEFT JOIN estabelecimento e ON e.id = partida.id_estabelecimento
+  ''';
+
   Future<List<Postagem>> listarFeed(int meuId) async {
     if (FirestoreCompatIds.habilitado) {
       final uid = FirestoreCompatIds.usuarioUid;
@@ -41,30 +66,27 @@ class PostagemRepository {
       } else {
         docs = (await colecao.get())
             .docs
-            .where((d) => autores.contains(d.data()['autorId']))
+            .where((doc) => autores.contains(doc.data()['autorId']))
             .toList();
       }
-      final posts = docs.map((d) => _postagemDeDoc(d, uid)).toList();
+      final posts = docs.map((doc) => _postagemDeDoc(doc, uid)).toList();
       posts.sort((a, b) => b.criadoEm.compareTo(a.criadoEm));
       return posts;
     }
     if (meuId == LocalDemoData.adminId) {
       return List.unmodifiable(LocalDemoData.instance.postagens);
     }
+
     final conn = await _conn;
-    final r = await conn.execute(
+    final rows = await conn.execute(
       Sql.named('''
-        SELECT p.id, p.autor_id, p.texto, p.foto, p.partida_id, p.criado_em,
-               trim(u.primeiro_nome || ' ' || coalesce(u.segundo_nome, '')) AS autor_nome,
-               (SELECT count(*) FROM curtida c WHERE c.postagem_id = p.id) AS curtidas,
-               EXISTS(SELECT 1 FROM curtida c WHERE c.postagem_id = p.id AND c.usuario_id = @me) AS curtiu_eu,
-               (SELECT count(*) FROM comentario cm WHERE cm.postagem_id = p.id) AS comentarios
-        FROM postagem p
-        JOIN usuario u ON u.id = p.autor_id
+        $_selectPostagem
         WHERE p.autor_id = @me
            OR p.autor_id IN (
-                SELECT CASE WHEN a.solicitante_id = @me THEN a.destinatario_id
-                            ELSE a.solicitante_id END
+                SELECT CASE
+                  WHEN a.solicitante_id = @me THEN a.destinatario_id
+                  ELSE a.solicitante_id
+                END
                 FROM amizade a
                 WHERE a.status = 'ACEITO'
                   AND (a.solicitante_id = @me OR a.destinatario_id = @me)
@@ -73,23 +95,35 @@ class PostagemRepository {
       '''),
       parameters: {'me': meuId},
     );
-    return r.map((e) => Postagem.fromRow(e.toColumnMap())).toList();
+    return rows.map((row) => Postagem.fromRow(row.toColumnMap())).toList();
   }
 
-  /// Posts públicos recentes, independentemente de amizade.
   Future<List<Postagem>> listarDescobrir(int meuId) async {
     if (FirestoreCompatIds.habilitado) {
       final uid = FirestoreCompatIds.usuarioUid;
       if (uid == null) return const [];
       final docs = await _firestore.collection('postagens').get();
-      final posts = docs.docs.map((d) => _postagemDeDoc(d, uid)).toList();
+      final posts = docs.docs
+          .map((doc) => _postagemDeDoc(doc, uid))
+          .where((post) => post.publica)
+          .toList();
       posts.sort((a, b) => b.criadoEm.compareTo(a.criadoEm));
       return posts;
     }
     if (meuId == LocalDemoData.adminId) {
-      return List.unmodifiable(LocalDemoData.instance.postagens);
+      return LocalDemoData.instance.postagens.where((p) => p.publica).toList();
     }
-    return listarFeed(meuId);
+
+    final conn = await _conn;
+    final rows = await conn.execute(
+      Sql.named('''
+        $_selectPostagem
+        WHERE p.visibilidade = 'PUBLICO'
+        ORDER BY p.criado_em DESC
+      '''),
+      parameters: {'me': meuId},
+    );
+    return rows.map((row) => Postagem.fromRow(row.toColumnMap())).toList();
   }
 
   Future<int> criar({
@@ -98,14 +132,37 @@ class PostagemRepository {
     Uint8List? foto,
     String? fotoUrl,
     int? partidaId,
+    String visibilidade = VisibilidadePostagem.publico,
   }) async {
+    final partida = partidaId == null
+        ? null
+        : await PartidaRepository(firestore: _firestoreConfigurado)
+            .buscarPorId(partidaId);
+    final tipo =
+        partida == null ? TipoPostagem.publicacao : TipoPostagem.atividade;
+
     if (FirestoreCompatIds.habilitado) {
+      final uid = FirestoreCompatIds.usuarioUid;
+      final amigos = visibilidade == VisibilidadePostagem.amigos
+          ? await AmizadeRepository(firestore: _firestore).uidsAmigos()
+          : <String>[];
       final ref = await _firestore.collection('postagens').add({
-        'autorId': FirestoreCompatIds.usuarioUid,
+        'autorId': uid,
         'autorNome': Sessao.instance.atual?.nomeCompleto ?? 'Usuário',
         'texto': texto,
         'fotoUrl': fotoUrl,
-        'partidaId': null,
+        'partidaIdCompat': partidaId,
+        'tipo': tipo,
+        'visibilidade': visibilidade,
+        'visivelPara': <String>{if (uid != null) uid, ...amigos}.toList(),
+        'atividadeModalidade': partida?.modalidade,
+        'atividadeLocal': partida?.quadraNome ?? partida?.estabelecimentoNome,
+        'atividadeDataHora':
+            partida == null ? null : Timestamp.fromDate(partida.dataHora),
+        'atividadeDuracao': partida?.duracao,
+        'atividadePlacarEquipeA': partida?.placarTime1,
+        'atividadePlacarEquipeB': partida?.placarTime2,
+        'atividadeParticipantes': partida?.membros.length,
         'curtidoPor': <String>[],
         'comentariosCount': 0,
         'ambiente': 'DEMO',
@@ -113,6 +170,7 @@ class PostagemRepository {
       });
       return FirestoreCompatIds.registrar('postagens', ref.id);
     }
+
     if (autorId == LocalDemoData.adminId) {
       final demo = LocalDemoData.instance;
       final id = demo.novoId();
@@ -126,16 +184,28 @@ class PostagemRepository {
           foto: foto,
           fotoUrl: fotoUrl,
           partidaId: partidaId,
+          tipo: tipo,
+          visibilidade: visibilidade,
+          atividadeModalidade: partida?.modalidade,
+          atividadeLocal: partida?.quadraNome ?? partida?.estabelecimentoNome,
+          atividadeDataHora: partida?.dataHora,
+          atividadeDuracao: partida?.duracao,
+          atividadePlacarEquipeA: partida?.placarTime1,
+          atividadePlacarEquipeB: partida?.placarTime2,
+          atividadeParticipantes: partida?.membros.length,
           criadoEm: DateTime.now(),
         ),
       );
       return id;
     }
+
     final conn = await _conn;
-    final r = await conn.execute(
+    final rows = await conn.execute(
       Sql.named('''
-        INSERT INTO postagem (autor_id, texto, foto, partida_id)
-        VALUES (@autor, @texto, @foto, @partida)
+        INSERT INTO postagem
+          (autor_id, texto, foto, partida_id, tipo, visibilidade)
+        VALUES
+          (@autor, @texto, @foto, @partida, @tipo, @visibilidade)
         RETURNING id
       '''),
       parameters: {
@@ -143,13 +213,18 @@ class PostagemRepository {
         'texto': texto,
         'foto': foto == null ? null : TypedValue(Type.byteArray, foto),
         'partida': partidaId,
+        'tipo': tipo,
+        'visibilidade': visibilidade,
       },
     );
-    return r.first.toColumnMap()['id'] as int;
+    return rows.first.toColumnMap()['id'] as int;
   }
 
   Future<void> definirCurtida(
-      int postagemId, int usuarioId, bool curtir) async {
+    int postagemId,
+    int usuarioId,
+    bool curtir,
+  ) async {
     if (FirestoreCompatIds.habilitado) {
       final uid = FirestoreCompatIds.usuarioUid;
       if (uid == null) return;
@@ -173,44 +248,62 @@ class PostagemRepository {
       );
       return;
     }
+
     final conn = await _conn;
     if (curtir) {
       await conn.execute(
         Sql.named('''
           INSERT INTO curtida (postagem_id, usuario_id)
-          VALUES (@p, @u)
+          VALUES (@postagem, @usuario)
           ON CONFLICT (postagem_id, usuario_id) DO NOTHING
         '''),
-        parameters: {'p': postagemId, 'u': usuarioId},
+        parameters: {'postagem': postagemId, 'usuario': usuarioId},
       );
     } else {
       await conn.execute(
-        Sql.named(
-            'DELETE FROM curtida WHERE postagem_id = @p AND usuario_id = @u'),
-        parameters: {'p': postagemId, 'u': usuarioId},
+        Sql.named('''
+          DELETE FROM curtida
+          WHERE postagem_id = @postagem AND usuario_id = @usuario
+        '''),
+        parameters: {'postagem': postagemId, 'usuario': usuarioId},
       );
     }
   }
 
-  // ---- Helpers Firestore ----
   Postagem _postagemDeDoc(
-    QueryDocumentSnapshot<Map<String, dynamic>> d,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
     String meuUid,
   ) {
-    final m = d.data();
-    final curtidoPor = (m['curtidoPor'] as List?)?.cast<String>() ?? const [];
+    final dados = doc.data();
+    final curtidoPor =
+        (dados['curtidoPor'] as List?)?.cast<String>() ?? const [];
     return Postagem(
-      id: FirestoreCompatIds.registrar('postagens', d.id),
+      id: FirestoreCompatIds.registrar('postagens', doc.id),
       autorId: FirestoreCompatIds.registrar(
-          'usuarios', (m['autorId'] as String?) ?? ''),
-      autorNome: (m['autorNome'] as String?) ?? 'Usuário',
-      texto: m['texto'] as String?,
-      fotoUrl: m['fotoUrl'] as String?,
-      partidaId: null,
-      criadoEm: _dataHora(m['criadoEm']),
+        'usuarios',
+        (dados['autorId'] as String?) ?? '',
+      ),
+      autorNome: (dados['autorNome'] as String?) ?? 'Usuário',
+      texto: dados['texto'] as String?,
+      fotoUrl: dados['fotoUrl'] as String?,
+      partidaId: (dados['partidaIdCompat'] as num?)?.toInt(),
+      tipo: (dados['tipo'] as String?) ?? TipoPostagem.publicacao,
+      visibilidade:
+          (dados['visibilidade'] as String?) ?? VisibilidadePostagem.publico,
+      atividadeModalidade: dados['atividadeModalidade'] as String?,
+      atividadeLocal: dados['atividadeLocal'] as String?,
+      atividadeDataHora: _dataHoraOpcional(dados['atividadeDataHora']),
+      atividadeDuracao: dados['atividadeDuracao'] as String?,
+      atividadePlacarEquipeA:
+          (dados['atividadePlacarEquipeA'] as num?)?.toInt(),
+      atividadePlacarEquipeB:
+          (dados['atividadePlacarEquipeB'] as num?)?.toInt(),
+      atividadeParticipantes:
+          (dados['atividadeParticipantes'] as num?)?.toInt(),
+      criadoEm: _dataHora(dados['criadoEm']),
       curtidas: curtidoPor.length,
       curtiuEu: curtidoPor.contains(meuUid),
-      comentarios: (m['comentariosCount'] as num?)?.toInt() ?? 0,
+      comentarios: (dados['comentariosCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -218,12 +311,12 @@ class PostagemRepository {
     final conhecido = FirestoreCompatIds.documento('postagens', id);
     final ref = _firestore.collection('postagens');
     if (conhecido != null) {
-      final d = await ref.doc(conhecido).get();
-      if (d.exists) return d;
+      final doc = await ref.doc(conhecido).get();
+      if (doc.exists) return doc;
     }
     final docs = await ref.get();
-    for (final d in docs.docs) {
-      if (FirestoreCompatIds.registrar('postagens', d.id) == id) return d;
+    for (final doc in docs.docs) {
+      if (FirestoreCompatIds.registrar('postagens', doc.id) == id) return doc;
     }
     return null;
   }
@@ -232,5 +325,12 @@ class PostagemRepository {
     if (valor is Timestamp) return valor.toDate();
     if (valor is DateTime) return valor;
     return DateTime.tryParse(valor?.toString() ?? '') ?? DateTime.now();
+  }
+
+  DateTime? _dataHoraOpcional(dynamic valor) {
+    if (valor == null) return null;
+    if (valor is Timestamp) return valor.toDate();
+    if (valor is DateTime) return valor;
+    return DateTime.tryParse(valor.toString());
   }
 }

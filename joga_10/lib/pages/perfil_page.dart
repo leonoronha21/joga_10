@@ -100,10 +100,13 @@ class _PerfilPageState extends State<PerfilPage> {
     final u = _usuario;
     final dependencies = AppDependenciesScope.of(context);
     final fotosHabilitadas = dependencies.midia.uploadsHabilitados;
+    final isAdmin = u?.isAdmin == true || Sessao.instance.isAdminLocal;
     var firebaseAutenticado = false;
-    try {
-      firebaseAutenticado = dependencies.autenticacaoFirebase.autenticado;
-    } catch (_) {}
+    if (isAdmin) {
+      try {
+        firebaseAutenticado = dependencies.autenticacaoFirebase.autenticado;
+      } catch (_) {}
+    }
     return Column(
       children: [
         GradientHeader(
@@ -161,18 +164,19 @@ class _PerfilPageState extends State<PerfilPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
             children: [
-              _item(
-                icon: firebaseAutenticado
-                    ? Icons.cloud_done_outlined
-                    : Icons.cloud_off_outlined,
-                titulo: firebaseAutenticado
-                    ? 'Firebase conectado'
-                    : 'Sessao demonstrativa local',
-                subtitulo: firebaseAutenticado
-                    ? 'Perfil, locais, quadras e partidas sincronizados'
-                    : 'Entre com Google para usar os dados do Firestore',
-                onTap: () {},
-              ),
+              if (isAdmin)
+                _item(
+                  icon: firebaseAutenticado
+                      ? Icons.cloud_done_outlined
+                      : Icons.cloud_off_outlined,
+                  titulo: firebaseAutenticado
+                      ? 'Firebase conectado'
+                      : 'Sessão demonstrativa local',
+                  subtitulo: firebaseAutenticado
+                      ? 'Perfil, locais e partidas sincronizados'
+                      : 'Diagnóstico de conexão do ambiente',
+                  onTap: () {},
+                ),
               _item(
                 icon: Icons.person_outline,
                 titulo: 'Dados cadastrais',

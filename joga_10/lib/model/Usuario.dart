@@ -28,8 +28,10 @@ class Usuario {
     this.role = 'USER',
   });
 
-  String get nomeCompleto =>
-      [primeiroNome, segundoNome].where((p) => p != null && p.isNotEmpty).join(' ');
+  String get nomeCompleto => [primeiroNome, segundoNome]
+      .where((p) => p != null && p.isNotEmpty)
+      .join(' ');
+  bool get isAdmin => role == 'ADMIN';
 
   factory Usuario.fromRow(Map<String, dynamic> row) {
     return Usuario(
