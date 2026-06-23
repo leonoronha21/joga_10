@@ -52,6 +52,25 @@ class RateioCobranca {
   bool get isento => status == CobrancaStatus.isento;
   bool get quitado => pago || isento;
 
+  RateioCobranca copyWith({
+    String? status,
+    DateTime? pagoEm,
+    bool limparPagoEm = false,
+  }) {
+    return RateioCobranca(
+      id: id,
+      rateioId: rateioId,
+      partidaMembroId: partidaMembroId,
+      idUser: idUser,
+      nome: nome,
+      valorQuadra: valorQuadra,
+      taxaServico: taxaServico,
+      valorTotal: valorTotal,
+      status: status ?? this.status,
+      pagoEm: limparPagoEm ? null : pagoEm ?? this.pagoEm,
+    );
+  }
+
   factory RateioCobranca.fromRow(Map<String, dynamic> row) {
     return RateioCobranca(
       id: asInt(row['id']),
@@ -98,6 +117,20 @@ class PartidaRateio {
   double get totalRecebido => cobrancas
       .where((c) => c.pago)
       .fold(0, (total, c) => total + c.valorTotal);
+
+  PartidaRateio copyWith({
+    String? status,
+    List<RateioCobranca>? cobrancas,
+  }) {
+    return PartidaRateio(
+      id: id,
+      partidaId: partidaId,
+      valorQuadra: valorQuadra,
+      taxaPercentual: taxaPercentual,
+      status: status ?? this.status,
+      cobrancas: cobrancas ?? this.cobrancas,
+    );
+  }
 
   factory PartidaRateio.fromRow(
     Map<String, dynamic> row, {

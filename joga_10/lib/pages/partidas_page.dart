@@ -219,8 +219,6 @@ class _PartidaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icone =
-        partida.isVolei ? Icons.sports_volleyball : Icons.sports_soccer;
     final cor = partida.isVolei ? const Color(0xFF2563EB) : AppColors.primary;
     return AppCard(
       onTap: onTap,
@@ -235,7 +233,17 @@ class _PartidaCard extends StatelessWidget {
                   color: cor.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icone, color: cor),
+                child: partida.isVolei
+                    ? Image.asset(
+                        'lib/assets/img/voleibol.png',
+                        width: 24,
+                        height: 24,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.sports_volleyball,
+                          color: cor,
+                        ),
+                      )
+                    : Icon(Icons.sports_soccer, color: cor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -259,6 +267,17 @@ class _PartidaCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if ((partida.organizadorNome ?? '').isNotEmpty)
+                      Text(
+                        'Dono: ${partida.organizadorNome}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.inkMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                   ],
                 ),
               ),

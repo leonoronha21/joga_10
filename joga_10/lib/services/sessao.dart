@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:joga_10/domain/contracts/sessao_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 
 /// Sessão do usuário logado.
 ///
@@ -48,6 +49,9 @@ class Sessao implements SessaoContract {
     final email = prefs.getString(_kEmail);
     final nome = prefs.getString(_kNome);
     if (id == null || email == null) return null;
+    final uid = FirestoreCompatIds.usuarioUid;
+    final idCompat =
+        uid == null ? id : FirestoreCompatIds.registrar('usuarios', uid);
 
     final partes = (nome ?? '').trim().split(RegExp(r'\s+'));
     final primeiroNome =
@@ -55,7 +59,7 @@ class Sessao implements SessaoContract {
     final segundoNome = partes.length > 1 ? partes.skip(1).join(' ') : null;
 
     _atual = Usuario(
-      id: id,
+      id: idCompat,
       primeiroNome: primeiroNome,
       segundoNome:
           segundoNome != null && segundoNome.isNotEmpty ? segundoNome : null,
@@ -67,6 +71,8 @@ class Sessao implements SessaoContract {
 
   @override
   Future<int?> get usuarioId async {
+    final uid = FirestoreCompatIds.usuarioUid;
+    if (uid != null) return FirestoreCompatIds.registrar('usuarios', uid);
     if (_atual != null) return _atual!.id;
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_kId);

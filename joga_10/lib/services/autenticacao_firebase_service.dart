@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:joga_10/domain/contracts/autenticacao_firebase_contract.dart';
 import 'package:joga_10/model/Usuario.dart';
-import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/util/convite_privado.dart';
 
 class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
@@ -120,7 +120,7 @@ class AutenticacaoFirebaseService implements AutenticacaoFirebaseContract {
     final email = usuarioFirebase.email ?? '';
     return Usuario(
       // Compatibilidade temporaria: os fluxos demo ainda usam IDs numericos.
-      id: LocalDemoData.adminId,
+      id: FirestoreCompatIds.registrar('usuarios', usuarioFirebase.uid),
       primeiroNome: partes.isEmpty ? email.split('@').first : partes.first,
       segundoNome: partes.length > 1 ? partes.skip(1).join(' ') : null,
       email: email,

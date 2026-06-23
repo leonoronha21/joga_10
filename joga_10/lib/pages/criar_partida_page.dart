@@ -211,7 +211,7 @@ class _CriarPartidaPageState extends State<CriarPartidaPage> {
       _msg('Escolha até quando a partida deverá se repetir.');
       return;
     }
-    final id = Sessao.instance.atual?.id;
+    final id = await Sessao.instance.usuarioId;
     if (id == null) {
       _msg('Sessão expirada. Faça login novamente.');
       return;

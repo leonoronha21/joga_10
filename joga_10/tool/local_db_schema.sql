@@ -71,10 +71,15 @@ CREATE TABLE IF NOT EXISTS partida_membro (
   equipe TEXT NOT NULL DEFAULT 'TIME_1',
   nome TEXT NOT NULL,
   telefone TEXT,
+  capitao BOOLEAN NOT NULL DEFAULT FALSE,
   pos_x DOUBLE PRECISION,
   pos_y DOUBLE PRECISION,
   gols INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_partida_capitao_time
+  ON partida_membro(partida_id, equipe)
+  WHERE capitao = TRUE;
 
 CREATE TABLE IF NOT EXISTS partida_rateio (
   id SERIAL PRIMARY KEY,

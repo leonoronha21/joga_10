@@ -39,6 +39,68 @@ class GooglePlacesService {
     });
   }
 
+  Future<List<Estabelecimentos>> buscarTextoEsportivo({
+    required String termo,
+    required LatLng centro,
+    double raioMetros = 50000,
+  }) async {
+    final termoLimpo = termo.trim();
+    if (termoLimpo.isEmpty) {
+      return buscarQuadrasRegiao(centro: centro, raioMetros: raioMetros);
+    }
+    final consultas = <String>{
+      termoLimpo,
+      '$termoLimpo quadra esportiva',
+      '$termoLimpo futebol society',
+      '$termoLimpo Porto Alegre',
+    };
+    final resultados = await Future.wait(
+      consultas.map(
+        (consulta) => buscarTexto(
+          termo: consulta,
+          centro: centro,
+          raioMetros: raioMetros,
+        ),
+      ),
+    );
+    return _mesclarUnicos(resultados.expand((lista) => lista));
+  }
+
+  Future<List<Estabelecimentos>> buscarQuadrasRegiao({
+    required LatLng centro,
+    double raioMetros = 50000,
+  }) async {
+    final resultados = await Future.wait([
+      buscarProximos(centro: centro, raioMetros: raioMetros),
+      for (final termo in const [
+        'quadras esportivas',
+        'futebol society',
+        'quadra de futsal',
+        'quadra de volei',
+        'beach tennis',
+        'quadra de tenis e padel',
+      ])
+        buscarTexto(
+          termo: termo,
+          centro: centro,
+          raioMetros: raioMetros,
+        ),
+    ]);
+    return _mesclarUnicos(resultados.expand((lista) => lista));
+  }
+
+  List<Estabelecimentos> _mesclarUnicos(Iterable<Estabelecimentos> locais) {
+    final unicos = <String, Estabelecimentos>{};
+    for (final local in locais) {
+      final chave = local.placeId ??
+          '${local.nome.toLowerCase()}|'
+              '${local.latitude?.toStringAsFixed(5)}|'
+              '${local.longitude?.toStringAsFixed(5)}';
+      unicos[chave] = local;
+    }
+    return unicos.values.toList();
+  }
+
   Future<Estabelecimentos?> buscarDetalhes(Estabelecimentos local) async {
     final placeId = local.placeId;
     if (placeId == null || placeId.isEmpty) return local;

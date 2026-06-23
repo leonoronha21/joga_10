@@ -13,6 +13,7 @@ class PartidaMembro {
   final String? telefone;
   final String equipe;
   final String nome;
+  final bool capitao;
   final double? posX; // 0..1 (normalizado no campo)
   final double? posY;
   final int gols;
@@ -24,6 +25,7 @@ class PartidaMembro {
     this.telefone,
     required this.equipe,
     required this.nome,
+    this.capitao = false,
     this.posX,
     this.posY,
     this.gols = 0,
@@ -36,6 +38,7 @@ class PartidaMembro {
     double? posX,
     double? posY,
     int? gols,
+    bool? capitao,
   }) {
     return PartidaMembro(
       id: id,
@@ -44,6 +47,7 @@ class PartidaMembro {
       telefone: telefone,
       equipe: equipe ?? this.equipe,
       nome: nome,
+      capitao: capitao ?? this.capitao,
       posX: posX ?? this.posX,
       posY: posY ?? this.posY,
       gols: gols ?? this.gols,
@@ -58,6 +62,7 @@ class PartidaMembro {
       telefone: row['telefone'] as String?,
       equipe: (row['equipe'] as String?) ?? Equipe.time1,
       nome: (row['nome'] as String?) ?? '',
+      capitao: (row['capitao'] as bool?) ?? false,
       posX: row['pos_x'] == null ? null : asDouble(row['pos_x']),
       posY: row['pos_y'] == null ? null : asDouble(row['pos_y']),
       gols: asInt(row['gols']),

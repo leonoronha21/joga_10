@@ -1,14 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/model/Postagem.dart';
+import 'package:joga_10/model/Usuario.dart';
 import 'package:joga_10/repositories/partida_repository.dart';
 import 'package:joga_10/repositories/postagem_repository.dart';
 import 'package:joga_10/services/local_demo_data.dart';
+import 'package:joga_10/services/sessao.dart';
 
 void main() {
   test('publica partida de vôlei como atividade social', () async {
+    SharedPreferences.setMockInitialValues({});
+    await Sessao.instance.salvar(
+      Usuario(
+        id: LocalDemoData.adminId,
+        primeiroNome: 'Admin',
+        email: 'admin',
+        role: 'ADMIN',
+      ),
+    );
     final demo = LocalDemoData.instance;
     final partidaRepo = PartidaRepository();
     final postagemRepo = PostagemRepository();

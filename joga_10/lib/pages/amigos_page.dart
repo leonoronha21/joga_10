@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/model/Amizade.dart';
@@ -17,6 +19,7 @@ class AmigosPage extends StatefulWidget {
 class _AmigosPageState extends State<AmigosPage> {
   final _repo = AmizadeRepository();
   final _busca = TextEditingController();
+  Timer? _debounce;
 
   int? _meuId;
   List<PedidoAmizade> _pedidos = [];
@@ -24,6 +27,7 @@ class _AmigosPageState extends State<AmigosPage> {
   List<UsuarioBusca> _resultados = [];
   bool _carregando = true;
   bool _buscando = false;
+  bool _encontrarPessoas = false;
 
   @override
   void initState() {
@@ -33,6 +37,7 @@ class _AmigosPageState extends State<AmigosPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _busca.dispose();
     super.dispose();
   }
@@ -55,7 +60,7 @@ class _AmigosPageState extends State<AmigosPage> {
           _carregando = false;
         });
       }
-      if (_busca.text.trim().isNotEmpty) await _buscar(_busca.text);
+      if (_encontrarPessoas) await _buscar(_busca.text);
     } catch (_) {
       if (mounted) setState(() => _carregando = false);
     }
@@ -63,10 +68,6 @@ class _AmigosPageState extends State<AmigosPage> {
 
   Future<void> _buscar(String termo) async {
     if (_meuId == null) return;
-    if (termo.trim().isEmpty) {
-      setState(() => _resultados = []);
-      return;
-    }
     setState(() => _buscando = true);
     try {
       final res = await _repo.buscarUsuarios(_meuId!, termo.trim());
@@ -77,8 +78,21 @@ class _AmigosPageState extends State<AmigosPage> {
   }
 
   Future<void> _enviar(int outroId) async {
-    await _repo.enviarPedido(_meuId!, outroId);
-    await _recarregar();
+    final meuId = _meuId;
+    if (meuId == null) {
+      _msg('Entre na sua conta para adicionar amigos.');
+      return;
+    }
+    try {
+      await _repo.enviarPedido(meuId, outroId);
+      if (!mounted) return;
+      _msg('Solicitacao de amizade enviada.');
+      await _recarregar();
+    } on StateError catch (erro) {
+      _msg(erro.message);
+    } catch (_) {
+      _msg('Nao foi possivel enviar a solicitacao.');
+    }
   }
 
   Future<void> _responder(int amizadeId, bool aceitar) async {
@@ -88,6 +102,28 @@ class _AmigosPageState extends State<AmigosPage> {
 
   bool get _pesquisando => _busca.text.trim().isNotEmpty;
 
+  void _alterarModo(bool encontrar) {
+    setState(() => _encontrarPessoas = encontrar);
+    if (encontrar) {
+      _buscar(_busca.text);
+    } else {
+      _busca.clear();
+      setState(() => _resultados = []);
+    }
+  }
+
+  void _agendarBusca(String termo) {
+    _debounce?.cancel();
+    _debounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _buscar(termo),
+    );
+  }
+
+  void _msg(String texto) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,29 +131,52 @@ class _AmigosPageState extends State<AmigosPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: _busca,
-              onChanged: _buscar,
-              decoration: InputDecoration(
-                hintText: 'Buscar pessoas por nome',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _pesquisando
-                    ? IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _busca.clear();
-                          setState(() => _resultados = []);
-                        },
-                      )
-                    : null,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.people_outline),
+                    label: Text('Meus amigos'),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.person_search_outlined),
+                    label: Text('Encontrar pessoas'),
+                  ),
+                ],
+                selected: {_encontrarPessoas},
+                onSelectionChanged: (selecao) => _alterarModo(selecao.first),
               ),
             ),
           ),
+          if (_encontrarPessoas)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _busca,
+                onChanged: _agendarBusca,
+                decoration: InputDecoration(
+                  hintText: 'Buscar perfis existentes no Joga10',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _pesquisando
+                      ? IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _busca.clear();
+                            _buscar('');
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
           Expanded(
             child: _carregando
                 ? const LoadingView()
-                : _pesquisando
+                : _encontrarPessoas
                     ? _listaBusca()
                     : _listaPrincipal(),
           ),
@@ -129,9 +188,14 @@ class _AmigosPageState extends State<AmigosPage> {
   Widget _listaBusca() {
     if (_buscando) return const LoadingView();
     if (_resultados.isEmpty) {
-      return const EmptyState(
-        icone: Icons.search_off,
-        titulo: 'Ninguém encontrado',
+      return EmptyState(
+        icone: Icons.person_search_outlined,
+        titulo: _pesquisando
+            ? 'Nenhum perfil encontrado'
+            : 'Nenhum outro perfil disponível',
+        mensagem: _pesquisando
+            ? 'Tente buscar usando outro nome.'
+            : 'Novos usuários do app aparecerão aqui.',
       );
     }
     return ListView.separated(
@@ -161,11 +225,21 @@ class _AmigosPageState extends State<AmigosPage> {
                   const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 8),
           if (_amigos.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'Você ainda não tem amigos. Busque pessoas acima para adicionar.',
-                style: TextStyle(color: AppColors.inkMuted),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Você ainda não tem amigos.',
+                    style: TextStyle(color: AppColors.inkMuted),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _alterarModo(true),
+                    icon: const Icon(Icons.person_search_outlined),
+                    label: const Text('Encontrar pessoas'),
+                  ),
+                ],
               ),
             )
           else
@@ -291,7 +365,7 @@ class _AmigosPageState extends State<AmigosPage> {
               ],
             ),
           ),
-          acao,
+          SizedBox(width: 122, child: acao),
         ],
       ),
     );

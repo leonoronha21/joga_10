@@ -233,7 +233,7 @@ class UsuarioRepository implements UsuarioRepositoryContract {
     if (!doc.exists) return null;
     final m = doc.data() ?? const {};
     return Usuario(
-      id: LocalDemoData.adminId,
+      id: FirestoreCompatIds.registrar('usuarios', uid),
       primeiroNome: (m['primeiroNome'] as String?) ?? '',
       segundoNome: m['segundoNome'] as String?,
       email: (m['email'] as String?) ?? '',

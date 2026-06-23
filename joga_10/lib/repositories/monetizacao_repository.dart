@@ -41,6 +41,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<PartidaRateio?> buscarRateioPorPartida(int partidaId) async {
+    if (!await _souOrganizadorDaPartida(partidaId)) return null;
     if (FirestoreCompatIds.habilitado) return _buscarRateioFirestore(partidaId);
     if (partidaId < 0) return LocalDemoData.instance.rateios[partidaId];
     final conn = await _conn;
@@ -72,6 +73,11 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
     required int partidaId,
     required double valorQuadra,
   }) async {
+    if (!await _souOrganizadorDaPartida(partidaId)) {
+      throw StateError(
+        'Somente o criador da partida pode configurar o rateio.',
+      );
+    }
     final taxaPercentual = await _taxaRateioDaPartida(partidaId);
     if (FirestoreCompatIds.habilitado) {
       return _criarOuAtualizarRateioFirestore(
@@ -716,6 +722,27 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       if (FirestoreCompatIds.registrar('partidas', d.id) == id) return d;
     }
     return null;
+  }
+
+  Future<bool> _souOrganizadorDaPartida(int partidaId) async {
+    final usuarioId = await Sessao.instance.usuarioId;
+    if (usuarioId == null) return false;
+    if (FirestoreCompatIds.habilitado) {
+      final partida = await _partidaDocPorId(partidaId);
+      return partida?.data()?['organizadorId'] == FirestoreCompatIds.usuarioUid;
+    }
+    if (partidaId < 0) {
+      return LocalDemoData.instance.buscarPartida(partidaId)?.organizadorId ==
+          usuarioId;
+    }
+    final conn = await _conn;
+    final rows = await conn.execute(
+      Sql.named(
+        'SELECT 1 FROM partida WHERE id = @partida AND organizador_id = @usuario',
+      ),
+      parameters: {'partida': partidaId, 'usuario': usuarioId},
+    );
+    return rows.isNotEmpty;
   }
 
   Future<DocumentSnapshot<Map<String, dynamic>>?> _rateioDocPorId(

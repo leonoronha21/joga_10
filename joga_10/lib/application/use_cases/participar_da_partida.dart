@@ -29,7 +29,7 @@ class ParticiparDaPartida {
 
   Future<ParticipacaoPartida> execute(Partida partida) async {
     final usuario = await sessao.restaurarLocal();
-    final id = usuario?.id ?? await sessao.usuarioId;
+    final id = await sessao.usuarioId ?? usuario?.id;
     if (id == null) {
       return const ParticipacaoPartida(ResultadoParticipacao.requerLogin);
     }

@@ -50,6 +50,21 @@ service cloud.firestore {
       );
     }
 
+    function isCaptain(data, team) {
+      return signedIn() && (
+        (
+          team == 'TIME_1'
+          && 'capitaoTime1Uid' in data
+          && data.capitaoTime1Uid == request.auth.uid
+        )
+        || (
+          team == 'TIME_2'
+          && 'capitaoTime2Uid' in data
+          && data.capitaoTime2Uid == request.auth.uid
+        )
+      );
+    }
+
     match /usuarios/{userId} {
       // Perfil privado: e-mail, telefone e endereço ficam visíveis só ao dono.
       allow read: if signedIn() && request.auth.uid == userId;
@@ -114,6 +129,27 @@ service cloud.firestore {
           && request.resource.data.participantesUids
             .hasAll([request.auth.uid])
         )
+        || (
+          changedOnly([
+            'participantesUids', 'capitaoTime1Uid',
+            'capitaoTime2Uid', 'atualizadoEm'
+          ])
+          && 'participantesUids' in resource.data
+          && resource.data.participantesUids.hasAny([request.auth.uid])
+          && !request.resource.data.participantesUids.hasAny([request.auth.uid])
+          && resource.data.participantesUids.size()
+            == request.resource.data.participantesUids.size() + 1
+          && resource.data.participantesUids
+            .hasAll(request.resource.data.participantesUids)
+        )
+        || (
+          isCaptain(resource.data, 'TIME_1')
+          && changedOnly(['formacaoTime1', 'atualizadoEm'])
+        )
+        || (
+          isCaptain(resource.data, 'TIME_2')
+          && changedOnly(['formacaoTime2', 'atualizadoEm'])
+        )
       );
       allow delete: if false;
 
@@ -141,9 +177,18 @@ service cloud.firestore {
         );
         allow update: if signedIn() && (
           resource.data.organizadorId == request.auth.uid
+          || (
+            changedOnly(['posX', 'posY'])
+            && isCaptain(
+              get(/databases/$(database)/documents/partidas/$(partidaId)).data,
+              resource.data.equipe
+            )
+          )
+        );
+        allow delete: if signedIn() && (
+          resource.data.organizadorId == request.auth.uid
           || resource.data.usuarioId == request.auth.uid
         );
-        allow delete: if false;
       }
     }
 
@@ -225,12 +270,27 @@ service cloud.firestore {
         ]);
       allow update: if signedIn()
         && request.auth.uid in resource.data.usuarios
-        && changedOnly(['status', 'criadoEm'])
         && (
-          (request.auth.uid == resource.data.destinatarioId
-            && request.resource.data.status in ['ACEITO', 'RECUSADO'])
-          || (request.auth.uid == resource.data.solicitanteId
-            && request.resource.data.status == 'PENDENTE')
+          (
+            changedOnly(['status', 'criadoEm'])
+            && (
+              (request.auth.uid == resource.data.destinatarioId
+                && request.resource.data.status in ['ACEITO', 'RECUSADO'])
+              || (request.auth.uid == resource.data.solicitanteId
+                && request.resource.data.status == 'PENDENTE')
+            )
+          )
+          || (
+            changedOnly([
+              'solicitanteId', 'destinatarioId', 'status',
+              'criadoEm', 'atualizadoEm'
+            ])
+            && request.resource.data.status == 'PENDENTE'
+            && request.resource.data.solicitanteId == request.auth.uid
+            && request.resource.data.destinatarioId in resource.data.usuarios
+            && request.resource.data.destinatarioId != request.auth.uid
+            && request.resource.data.usuarios == resource.data.usuarios
+          )
         );
       allow delete: if false;
     }
@@ -305,7 +365,8 @@ service cloud.firestore {
 
     // ---- Rateio (divisão de custos) ----
     match /rateios/{documentId} {
-      allow read: if canAccessMatch(resource.data);
+      allow read: if signedIn()
+        && resource.data.organizadorId == request.auth.uid;
       // Só o organizador da partida cria/recalcula/fecha o rateio.
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
@@ -315,14 +376,12 @@ service cloud.firestore {
     }
 
     match /cobrancas/{documentId} {
-      allow read: if canAccessMatch(resource.data);
+      allow read: if signedIn()
+        && resource.data.organizadorId == request.auth.uid;
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
-      // Organizador atualiza qualquer cobrança; o próprio jogador quita a sua.
-      allow update: if signedIn() && (
-        resource.data.organizadorId == request.auth.uid
-        || resource.data.idUserUid == request.auth.uid
-      );
+      allow update: if signedIn()
+        && resource.data.organizadorId == request.auth.uid;
       allow delete: if false;
     }
 

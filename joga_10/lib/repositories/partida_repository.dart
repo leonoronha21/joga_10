@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:postgres/postgres.dart';
 
 import 'package:joga_10/db/app_database.dart';
@@ -30,10 +31,12 @@ class PartidaRepository implements PartidaRepositoryContract {
       _firestoreConfigurado ?? FirebaseFirestore.instance;
 
   static const String _selectBase = '''
-    SELECT p.*, q.nome AS quadra_nome, e.nome AS estabelecimento_nome
+    SELECT p.*, q.nome AS quadra_nome, e.nome AS estabelecimento_nome,
+           trim(u.primeiro_nome || ' ' || coalesce(u.segundo_nome, '')) AS organizador_nome
     FROM partida p
     LEFT JOIN quadra q          ON q.id = p.id_quadra
     LEFT JOIN estabelecimento e ON e.id = p.id_estabelecimento
+    LEFT JOIN usuario u         ON u.id = p.organizador_id
   ''';
 
   /// Cria a partida e seus membros numa única transação.
@@ -100,6 +103,7 @@ class PartidaRepository implements PartidaRepositoryContract {
                 telefone: membro.telefone,
                 equipe: membro.equipe,
                 nome: membro.nome,
+                capitao: membro.capitao,
                 posX: membro.posX,
                 posY: membro.posY,
                 gols: membro.gols,
@@ -121,6 +125,10 @@ class PartidaRepository implements PartidaRepositoryContract {
             modalidade: modalidade,
             formato: formatoPartida,
             membros: membrosComId,
+            organizadorNome: demo.usuarios
+                .where((u) => u.id == organizadorId)
+                .firstOrNull
+                ?.nomeCompleto,
             quadraNome: quadra?.nome,
             estabelecimentoNome: estab?.nome,
             grupoRecorrencia: grupoRecorrencia,
@@ -174,9 +182,9 @@ class PartidaRepository implements PartidaRepositoryContract {
           await tx.execute(
             Sql.named('''
               INSERT INTO partida_membro
-                (partida_id, id_user, equipe, nome, telefone)
+                (partida_id, id_user, equipe, nome, telefone, capitao)
               VALUES
-                (@partida_id, @id_user, @equipe, @nome, @telefone)
+                (@partida_id, @id_user, @equipe, @nome, @telefone, @capitao)
             '''),
             parameters: {
               'partida_id': partidaId,
@@ -184,6 +192,7 @@ class PartidaRepository implements PartidaRepositoryContract {
               'equipe': m.equipe,
               'nome': m.nome,
               'telefone': m.telefone,
+              'capitao': m.capitao,
             },
           );
         }
@@ -343,6 +352,9 @@ class PartidaRepository implements PartidaRepositoryContract {
 
   @override
   Future<bool> atualizarStatus(int id, String status) async {
+    final partida = await buscarPorId(id);
+    if (partida == null) return false;
+    await _exigirOrganizador(partida);
     if (FirestoreCompatIds.habilitado) {
       final documento = await _documentoPartida(id);
       if (documento == null) return false;
@@ -380,6 +392,9 @@ class PartidaRepository implements PartidaRepositoryContract {
     required int placarTime2,
     required Map<int, int> golsPorMembro, // id do membro -> gols
   }) async {
+    final partida = await buscarPorId(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    await _exigirOrganizador(partida);
     if (FirestoreCompatIds.habilitado) {
       return _finalizarFirestore(
         partidaId: partidaId,
@@ -401,6 +416,7 @@ class PartidaRepository implements PartidaRepositoryContract {
                 telefone: m.telefone,
                 equipe: m.equipe,
                 nome: m.nome,
+                capitao: m.capitao,
                 posX: m.posX,
                 posY: m.posY,
                 gols: golsPorMembro[m.id] ?? m.gols,
@@ -450,7 +466,11 @@ class PartidaRepository implements PartidaRepositoryContract {
     String? formacaoTime1,
     String? formacaoTime2,
     required List<PartidaMembro> membros,
+    String? equipeEditada,
   }) async {
+    final partida = await buscarPorId(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    await _validarPermissaoEscalacao(partida, equipeEditada);
     if (FirestoreCompatIds.habilitado) {
       return _salvarEscalacaoFirestore(
         partidaId: partidaId,
@@ -458,6 +478,7 @@ class PartidaRepository implements PartidaRepositoryContract {
         formacaoTime1: formacaoTime1,
         formacaoTime2: formacaoTime2,
         membros: membros,
+        equipeEditada: equipeEditada,
       );
     }
     if (partidaId < 0) {
@@ -465,19 +486,24 @@ class PartidaRepository implements PartidaRepositoryContract {
       final index = demo.partidas.indexWhere((p) => p.id == partidaId);
       if (index < 0) return;
       final atual = demo.partidas[index];
-      final atualizados = membros.map((membro) {
-        final anterior =
-            atual.membros.where((item) => item.id == membro.id).firstOrNull;
+      final atualizados = atual.membros.map((anterior) {
+        final membro =
+            membros.where((item) => item.id == anterior.id).firstOrNull;
+        if (membro == null ||
+            (equipeEditada != null && anterior.equipe != equipeEditada)) {
+          return anterior;
+        }
         return PartidaMembro(
-          id: membro.id,
+          id: anterior.id,
           partidaId: partidaId,
-          idUser: anterior?.idUser,
-          telefone: anterior?.telefone,
-          equipe: membro.equipe,
-          nome: membro.nome,
+          idUser: anterior.idUser,
+          telefone: anterior.telefone,
+          equipe: equipeEditada == null ? membro.equipe : anterior.equipe,
+          nome: anterior.nome,
+          capitao: anterior.capitao,
           posX: membro.posX,
           posY: membro.posY,
-          gols: anterior?.gols ?? 0,
+          gols: anterior.gols,
         );
       }).toList();
       demo.partidas[index] = Partida(
@@ -485,15 +511,19 @@ class PartidaRepository implements PartidaRepositoryContract {
         idEstabelecimento: atual.idEstabelecimento,
         idQuadra: atual.idQuadra,
         organizadorId: atual.organizadorId,
+        organizadorUid: atual.organizadorUid,
+        organizadorNome: atual.organizadorNome,
         duracao: atual.duracao,
         dataHora: atual.dataHora,
         status: atual.status,
         preco: atual.preco,
         visibilidade: atual.visibilidade,
         modalidade: atual.modalidade,
-        formato: formato,
-        formacaoTime1: formacaoTime1,
-        formacaoTime2: formacaoTime2,
+        formato: equipeEditada == null ? formato : atual.formato,
+        formacaoTime1:
+            equipeEditada == Equipe.time2 ? atual.formacaoTime1 : formacaoTime1,
+        formacaoTime2:
+            equipeEditada == Equipe.time1 ? atual.formacaoTime2 : formacaoTime2,
         placarTime1: atual.placarTime1,
         placarTime2: atual.placarTime2,
         grupoRecorrencia: atual.grupoRecorrencia,
@@ -507,39 +537,135 @@ class PartidaRepository implements PartidaRepositoryContract {
     }
     final conn = await _conn;
     await conn.runTx((tx) async {
-      await tx.execute(
-        Sql.named('''
-          UPDATE partida SET
-            formato = @formato,
-            formacao_time1 = @f1,
-            formacao_time2 = @f2
-          WHERE id = @id
-        '''),
-        parameters: {
-          'id': partidaId,
-          'formato': formato,
-          'f1': formacaoTime1,
-          'f2': formacaoTime2,
-        },
-      );
-      for (final m in membros) {
-        if (m.id == null) continue;
+      if (equipeEditada == null) {
         await tx.execute(
           Sql.named('''
-            UPDATE partida_membro SET
-              equipe = @equipe,
-              pos_x = @px,
-              pos_y = @py
+            UPDATE partida SET
+              formato = @formato,
+              formacao_time1 = @f1,
+              formacao_time2 = @f2
             WHERE id = @id
           '''),
           parameters: {
-            'id': m.id,
-            'equipe': m.equipe,
-            'px': m.posX,
-            'py': m.posY,
+            'id': partidaId,
+            'formato': formato,
+            'f1': formacaoTime1,
+            'f2': formacaoTime2,
           },
         );
+      } else {
+        final coluna =
+            equipeEditada == Equipe.time1 ? 'formacao_time1' : 'formacao_time2';
+        final formacao =
+            equipeEditada == Equipe.time1 ? formacaoTime1 : formacaoTime2;
+        await tx.execute(
+          Sql.named('UPDATE partida SET $coluna = @formacao WHERE id = @id'),
+          parameters: {'id': partidaId, 'formacao': formacao},
+        );
       }
+      for (final m in membros) {
+        if (m.id == null) continue;
+        if (equipeEditada != null && m.equipe != equipeEditada) continue;
+        if (equipeEditada == null) {
+          await tx.execute(
+            Sql.named('''
+              UPDATE partida_membro SET
+                equipe = @equipe,
+                pos_x = @px,
+                pos_y = @py
+              WHERE id = @id
+            '''),
+            parameters: {
+              'id': m.id,
+              'equipe': m.equipe,
+              'px': m.posX,
+              'py': m.posY,
+            },
+          );
+        } else {
+          await tx.execute(
+            Sql.named('''
+              UPDATE partida_membro SET
+                pos_x = @px,
+                pos_y = @py
+              WHERE id = @id AND equipe = @equipe
+            '''),
+            parameters: {
+              'id': m.id,
+              'equipe': equipeEditada,
+              'px': m.posX,
+              'py': m.posY,
+            },
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  Future<void> definirCapitao({
+    required int partidaId,
+    required String equipe,
+    required int membroId,
+  }) async {
+    final partida = await buscarPorId(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    await _exigirOrganizador(partida);
+    final membro = partida.membros
+        .where((item) => item.id == membroId && item.equipe == equipe)
+        .firstOrNull;
+    if (membro == null || membro.idUser == null) {
+      throw StateError('Escolha um jogador cadastrado no app.');
+    }
+    if (FirestoreCompatIds.habilitado) {
+      return _definirCapitaoFirestore(
+        partidaId: partidaId,
+        equipe: equipe,
+        membroId: membroId,
+      );
+    }
+    if (partidaId < 0) {
+      final demo = LocalDemoData.instance;
+      final index = demo.partidas.indexWhere((item) => item.id == partidaId);
+      if (index < 0) return;
+      final atual = demo.partidas[index];
+      demo.partidas[index] = demo.copiarPartida(
+        atual,
+        membros: atual.membros
+            .map(
+              (item) => item.copyWith(
+                capitao: item.equipe == equipe && item.id == membroId,
+              ),
+            )
+            .toList(),
+      );
+      return;
+    }
+    final conn = await _conn;
+    await conn.runTx((tx) async {
+      await tx.execute(
+        Sql.named('''
+          UPDATE partida_membro
+          SET capitao = FALSE
+          WHERE partida_id = @partida AND equipe = @equipe
+        '''),
+        parameters: {
+          'partida': partidaId,
+          'equipe': equipe,
+        },
+      );
+      await tx.execute(
+        Sql.named('''
+          UPDATE partida_membro
+          SET capitao = TRUE
+          WHERE id = @membro AND partida_id = @partida AND equipe = @equipe
+        '''),
+        parameters: {
+          'partida': partidaId,
+          'equipe': equipe,
+          'membro': membroId,
+        },
+      );
     });
   }
 
@@ -551,6 +677,15 @@ class PartidaRepository implements PartidaRepositoryContract {
     required String nome,
     String? telefone,
   }) async {
+    final partida = await buscarPorId(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    final usuarioId = await Sessao.instance.usuarioId;
+    final autoEntrada = idUser != null && idUser == usuarioId;
+    if (partida.organizadorId != usuarioId && !autoEntrada) {
+      throw StateError(
+        'Apenas o criador pode adicionar outros jogadores à partida.',
+      );
+    }
     if (FirestoreCompatIds.habilitado) {
       return _adicionarMembroFirestore(
         partidaId: partidaId,
@@ -581,6 +716,54 @@ class PartidaRepository implements PartidaRepositoryContract {
         'id_user': idUser,
         'equipe': equipe,
         'nome': nome,
+      },
+    );
+  }
+
+  @override
+  Future<void> removerMembro({
+    required int partidaId,
+    required int membroId,
+  }) async {
+    final partida = await buscarPorId(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    final usuarioId = await Sessao.instance.usuarioId;
+    final membro =
+        partida.membros.where((item) => item.id == membroId).firstOrNull;
+    if (usuarioId == null || membro == null) {
+      throw StateError('Participante não encontrado.');
+    }
+    if (partida.organizadorId == usuarioId) {
+      throw StateError('O criador não pode sair da própria partida.');
+    }
+    if (membro.idUser != usuarioId) {
+      throw StateError('Você só pode sair da sua própria participação.');
+    }
+
+    if (FirestoreCompatIds.habilitado) {
+      return _removerMembroFirestore(
+        partidaId: partidaId,
+        membroId: membroId,
+        membro: membro,
+      );
+    }
+    if (partidaId < 0) {
+      LocalDemoData.instance.removerMembro(
+        partidaId: partidaId,
+        membroId: membroId,
+      );
+      return;
+    }
+    final conn = await _conn;
+    await conn.execute(
+      Sql.named('''
+        DELETE FROM partida_membro
+        WHERE id = @membro AND partida_id = @partida AND id_user = @usuario
+      '''),
+      parameters: {
+        'membro': membroId,
+        'partida': partidaId,
+        'usuario': usuarioId,
       },
     );
   }
@@ -616,13 +799,14 @@ class PartidaRepository implements PartidaRepositoryContract {
     final quadra = quadraId == null
         ? null
         : await _firestore.collection('quadras').doc(quadraId).get();
+    final organizadorUid = FirestoreCompatIds.usuarioUid;
+    final organizadorNome = Sessao.instance.atual?.nomeCompleto.trim();
     final participantesUids = membros
         .map((membro) => _uidDoUsuario(membro.idUser))
         .whereType<String>()
         .toSet()
       ..addAll([
-        if (FirestoreCompatIds.usuarioUid != null)
-          FirestoreCompatIds.usuarioUid!,
+        if (organizadorUid != null) organizadorUid,
       ]);
     final conviteContatoKeys = visibilidade == VisibilidadePartida.privada
         ? membros
@@ -637,7 +821,9 @@ class PartidaRepository implements PartidaRepositoryContract {
       primeiraReferencia ??= referencia;
       final batch = _firestore.batch();
       batch.set(referencia, {
-        'organizadorId': FirestoreCompatIds.usuarioUid,
+        'organizadorId': organizadorUid,
+        if (organizadorNome != null && organizadorNome.isNotEmpty)
+          'organizadorNome': organizadorNome,
         'estabelecimentoId': estabelecimentoId,
         'estabelecimentoNome': estabelecimento?.data()?['nome'],
         'quadraId': quadraId,
@@ -666,10 +852,11 @@ class PartidaRepository implements PartidaRepositoryContract {
         batch.set(membroRef, {
           'usuarioId': membroUid,
           // Denormalizado para as regras de segurança (sem get() no batch).
-          'organizadorId': FirestoreCompatIds.usuarioUid,
+          'organizadorId': organizadorUid,
           'nome': membro.nome,
           'telefone': membro.telefone,
           'equipe': membro.equipe,
+          'capitao': membro.capitao,
           'posX': membro.posX,
           'posY': membro.posY,
           'gols': membro.gols,
@@ -783,7 +970,7 @@ class PartidaRepository implements PartidaRepositoryContract {
     final partidaId = FirestoreCompatIds.registrar('partidas', documento.id);
     final estabelecimentoId = dados['estabelecimentoId'] as String?;
     final quadraId = dados['quadraId'] as String?;
-    final organizadorId = dados['organizadorId'] as String?;
+    final organizadorUid = dados['organizadorId'] as String?;
     final estabelecimento = estabelecimentoId == null
         ? null
         : await _firestore
@@ -802,9 +989,12 @@ class PartidaRepository implements PartidaRepositoryContract {
       idQuadra: quadraId == null
           ? null
           : FirestoreCompatIds.registrar('quadras', quadraId),
-      organizadorId: organizadorId == FirestoreCompatIds.usuarioUid
-          ? (Sessao.instance.atual?.id ?? LocalDemoData.adminId)
-          : FirestoreCompatIds.registrar('usuarios', organizadorId ?? 'demo'),
+      organizadorId: organizadorUid == null
+          ? FirestoreCompatIds.registrar('usuarios', 'partida:${documento.id}')
+          : FirestoreCompatIds.registrar('usuarios', organizadorUid),
+      organizadorUid: organizadorUid,
+      organizadorNome: (dados['organizadorNome'] as String?) ??
+          await _nomePublicoUsuario(organizadorUid),
       duracao: dados['duracao'] as String?,
       dataHora: _dataHora(dados['dataHora']),
       status: (dados['status'] as String?) ?? PartidaStatus.agendada,
@@ -856,11 +1046,19 @@ class PartidaRepository implements PartidaRepositoryContract {
         telefone: dados['telefone'] as String?,
         equipe: (dados['equipe'] as String?) ?? Equipe.time1,
         nome: (dados['nome'] as String?) ?? '',
+        capitao: (dados['capitao'] as bool?) ?? false,
         posX: (dados['posX'] as num?)?.toDouble(),
         posY: (dados['posY'] as num?)?.toDouble(),
         gols: (dados['gols'] as num?)?.toInt() ?? 0,
       );
     }).toList();
+  }
+
+  Future<String?> _nomePublicoUsuario(String? uid) async {
+    if (uid == null || uid.isEmpty) return null;
+    final doc = await _firestore.collection('usuariosPublicos').doc(uid).get();
+    final dados = doc.data();
+    return dados?['nomeCompleto'] as String?;
   }
 
   Future<void> _finalizarFirestore({
@@ -891,22 +1089,26 @@ class PartidaRepository implements PartidaRepositoryContract {
     String? formacaoTime1,
     String? formacaoTime2,
     required List<PartidaMembro> membros,
+    String? equipeEditada,
   }) async {
     final partida = await _documentoPartida(partidaId);
     if (partida == null) return;
     final batch = _firestore.batch();
     batch.update(partida.reference, {
-      'formato': formato,
-      'formacaoTime1': formacaoTime1,
-      'formacaoTime2': formacaoTime2,
+      if (equipeEditada == null) 'formato': formato,
+      if (equipeEditada == null || equipeEditada == Equipe.time1)
+        'formacaoTime1': formacaoTime1,
+      if (equipeEditada == null || equipeEditada == Equipe.time2)
+        'formacaoTime2': formacaoTime2,
       'atualizadoEm': FieldValue.serverTimestamp(),
     });
     for (final membro in membros) {
       if (membro.id == null) continue;
+      if (equipeEditada != null && membro.equipe != equipeEditada) continue;
       final documento = await _documentoMembro(partida.id, membro.id!);
       if (documento == null) continue;
       batch.update(documento.reference, {
-        'equipe': membro.equipe,
+        if (equipeEditada == null) 'equipe': membro.equipe,
         'posX': membro.posX,
         'posY': membro.posY,
       });
@@ -941,6 +1143,7 @@ class PartidaRepository implements PartidaRepositoryContract {
       'nome': nome,
       'telefone': telefone,
       'equipe': equipe,
+      'capitao': false,
       'gols': 0,
       'ambiente': 'DEMO',
       'criadoEm': FieldValue.serverTimestamp(),
@@ -958,6 +1161,100 @@ class PartidaRepository implements PartidaRepositoryContract {
       });
     }
     await batch.commit();
+  }
+
+  Future<void> _removerMembroFirestore({
+    required int partidaId,
+    required int membroId,
+    required PartidaMembro membro,
+  }) async {
+    final partida = await _documentoPartida(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    final membroDoc = await _documentoMembro(partida.id, membroId);
+    if (membroDoc == null) throw StateError('Participante não encontrado.');
+    final membroUid = (membroDoc.data()?['usuarioId'] as String?) ??
+        _uidDoUsuario(membro.idUser);
+    if (membroUid == null || membroUid != FirestoreCompatIds.usuarioUid) {
+      throw StateError('Você só pode sair da sua própria participação.');
+    }
+
+    final batch = _firestore.batch();
+    batch.delete(membroDoc.reference);
+    final atualizacao = <String, Object?>{
+      'participantesUids': FieldValue.arrayRemove([membroUid]),
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    };
+    if (membro.capitao) {
+      atualizacao[membro.equipe == Equipe.time1
+          ? 'capitaoTime1Uid'
+          : 'capitaoTime2Uid'] = FieldValue.delete();
+    }
+    batch.update(partida.reference, atualizacao);
+    await batch.commit();
+  }
+
+  Future<void> _definirCapitaoFirestore({
+    required int partidaId,
+    required String equipe,
+    required int membroId,
+  }) async {
+    final partida = await _documentoPartida(partidaId);
+    if (partida == null) throw StateError('Partida não encontrada.');
+    final membros = await partida.reference.collection('membros').get();
+    final registro = _registroMembros(partida.id);
+    QueryDocumentSnapshot<Map<String, dynamic>>? selecionado;
+    for (final documento in membros.docs) {
+      if (FirestoreCompatIds.registrar(registro, documento.id) == membroId) {
+        selecionado = documento;
+        break;
+      }
+    }
+    final capitaoUid = selecionado?.data()['usuarioId'] as String?;
+    if (selecionado == null ||
+        selecionado.data()['equipe'] != equipe ||
+        capitaoUid == null) {
+      throw StateError('Escolha um jogador cadastrado no app.');
+    }
+    final batch = _firestore.batch();
+    batch.update(partida.reference, {
+      (equipe == Equipe.time1 ? 'capitaoTime1Uid' : 'capitaoTime2Uid'):
+          capitaoUid,
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+    for (final documento in membros.docs) {
+      if (documento.data()['equipe'] != equipe) continue;
+      batch.update(documento.reference, {
+        'capitao': documento.id == selecionado.id,
+      });
+    }
+    await batch.commit();
+  }
+
+  Future<void> _exigirOrganizador(Partida partida) async {
+    final usuarioId = await Sessao.instance.usuarioId;
+    if (usuarioId == null || partida.organizadorId != usuarioId) {
+      throw StateError('Apenas o criador da partida pode realizar esta ação.');
+    }
+  }
+
+  Future<void> _validarPermissaoEscalacao(
+    Partida partida,
+    String? equipeEditada,
+  ) async {
+    final usuarioId = await Sessao.instance.usuarioId;
+    if (usuarioId == null) {
+      throw StateError('Entre na sua conta para alterar a escalação.');
+    }
+    if (partida.organizadorId == usuarioId) return;
+    final membro = partida.membroDoUsuario(usuarioId);
+    if (equipeEditada == null ||
+        membro == null ||
+        !membro.capitao ||
+        membro.equipe != equipeEditada) {
+      throw StateError(
+        'Somente o criador ou o capitão do time pode alterar a escalação.',
+      );
+    }
   }
 
   String? _uidDoUsuario(int? idUser) {

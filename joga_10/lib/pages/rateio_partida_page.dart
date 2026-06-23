@@ -6,6 +6,7 @@ import 'package:joga_10/domain/contracts/sessao_contract.dart';
 import 'package:joga_10/domain/services/beneficios_assinatura.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/Rateio.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/format.dart';
 import 'package:joga_10/widgets/common.dart';
@@ -23,11 +24,19 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
   late final MonetizacaoRepositoryContract _repo;
   late final SessaoContract _sessao;
   Future<PartidaRateio?>? _futuro;
+  PartidaRateio? _rateioAtual;
   int? _usuarioId;
+  bool _sessaoCarregada = false;
   bool _assinaturaProAtiva = false;
   bool _salvando = false;
 
-  bool get _souOrganizador => _usuarioId == widget.partida.organizadorId;
+  bool get _souOrganizador {
+    final uid = FirestoreCompatIds.usuarioUid;
+    if (uid != null && widget.partida.organizadorUid != null) {
+      return widget.partida.organizadorUid == uid;
+    }
+    return _usuarioId == widget.partida.organizadorId;
+  }
 
   @override
   void didChangeDependencies() {
@@ -46,6 +55,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
     if (mounted) {
       setState(() {
         _usuarioId = id;
+        _sessaoCarregada = true;
         _assinaturaProAtiva =
             const BeneficiosAssinatura().assinaturaProAtiva(assinatura);
       });
@@ -53,6 +63,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
   }
 
   void _recarregar() => setState(() {
+        _rateioAtual = null;
         _futuro = _repo.buscarRateioPorPartida(widget.partida.id);
       });
 
@@ -90,7 +101,25 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
     try {
       await _repo.atualizarStatusCobranca(cobranca.id, status);
       if (!mounted) return;
-      _recarregar();
+      final rateio = _rateioAtual;
+      if (rateio == null) return;
+      setState(() {
+        _rateioAtual = rateio.copyWith(
+          cobrancas: rateio.cobrancas
+              .map(
+                (item) => item.id == cobranca.id
+                    ? item.copyWith(
+                        status: status,
+                        pagoEm: status == CobrancaStatus.pago
+                            ? DateTime.now()
+                            : null,
+                        limparPagoEm: status != CobrancaStatus.pago,
+                      )
+                    : item,
+              )
+              .toList(),
+        );
+      });
     } catch (_) {
       _msg('Nao foi possivel atualizar o pagamento.');
     }
@@ -115,24 +144,34 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Rateio da partida')),
-      body: FutureBuilder<PartidaRateio?>(
-        future: _futuro!,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView();
-          }
-          if (snapshot.hasError) {
-            return const EmptyState(
-              icone: Icons.cloud_off_outlined,
-              titulo: 'Nao foi possivel carregar o rateio',
-            );
-          }
+      body: !_sessaoCarregada
+          ? const LoadingView()
+          : !_souOrganizador
+              ? const EmptyState(
+                  icone: Icons.lock_outline,
+                  titulo: 'Acesso restrito',
+                  mensagem:
+                      'Somente o criador da partida pode acessar e gerenciar o rateio.',
+                )
+              : FutureBuilder<PartidaRateio?>(
+                  future: _futuro!,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const LoadingView();
+                    }
+                    if (snapshot.hasError) {
+                      return const EmptyState(
+                        icone: Icons.cloud_off_outlined,
+                        titulo: 'Nao foi possivel carregar o rateio',
+                      );
+                    }
 
-          final rateio = snapshot.data;
-          if (rateio == null) return _semRateio();
-          return _conteudo(rateio);
-        },
-      ),
+                    final rateio = _rateioAtual ?? snapshot.data;
+                    _rateioAtual ??= rateio;
+                    if (rateio == null) return _semRateio();
+                    return _conteudo(rateio);
+                  },
+                ),
     );
   }
 

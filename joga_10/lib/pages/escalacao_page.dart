@@ -27,10 +27,14 @@ class _Jogador {
 class EscalacaoPage extends StatefulWidget {
   final Partida partida;
   final bool readOnly; // escalação congelada (partida finalizada/cancelada)
+  final String? equipeEditavel;
+  final bool podeAlterarFormato;
   const EscalacaoPage({
     super.key,
     required this.partida,
     this.readOnly = false,
+    this.equipeEditavel,
+    this.podeAlterarFormato = false,
   });
 
   @override
@@ -45,7 +49,7 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
   late String _formacaoTime1;
   late String _formacaoTime2;
   late List<_Jogador> _jogadores;
-  String _time = Equipe.time1;
+  late String _time;
   bool _salvando = false;
 
   @override
@@ -57,6 +61,7 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
         p.formacaoTime1 ?? Formacoes.doFormato(_formato).first.nome;
     _formacaoTime2 =
         p.formacaoTime2 ?? Formacoes.doFormato(_formato).first.nome;
+    _time = widget.equipeEditavel ?? Equipe.time1;
     // Mantém posições salvas; quem não tem posição começa no banco (x/y = -1).
     _jogadores = p.membros
         .where((m) => m.id != null)
@@ -80,6 +85,11 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
 
   Color get _corTime =>
       _time == Equipe.time1 ? AppColors.accent : AppColors.warning;
+  bool get _podeEditarTimeAtual =>
+      !widget.readOnly &&
+      (widget.equipeEditavel == null || widget.equipeEditavel == _time);
+  bool get _podeTrocarEquipe =>
+      !widget.readOnly && widget.equipeEditavel == null;
 
   void _aplicarFormacao(String nome) {
     final formacao = Formacoes.buscar(_formato, nome);
@@ -132,19 +142,20 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                   });
                 },
               ),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz),
-              title: Text('Mover para ${_outroTime(j.equipe)}'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  j.equipe =
-                      j.equipe == Equipe.time1 ? Equipe.time2 : Equipe.time1;
-                  j.x = -1;
-                  j.y = -1;
-                });
-              },
-            ),
+            if (_podeTrocarEquipe)
+              ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: Text('Mover para ${_outroTime(j.equipe)}'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    j.equipe =
+                        j.equipe == Equipe.time1 ? Equipe.time2 : Equipe.time1;
+                    j.x = -1;
+                    j.y = -1;
+                  });
+                },
+              ),
           ],
         ),
       ),
@@ -157,6 +168,9 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
     setState(() => _salvando = true);
     try {
       final membros = _jogadores
+          .where((j) =>
+              widget.equipeEditavel == null ||
+              j.equipe == widget.equipeEditavel)
           .map((j) => PartidaMembro(
                 id: j.id,
                 equipe: j.equipe,
@@ -171,6 +185,7 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
         formacaoTime1: _formacaoTime1,
         formacaoTime2: _formacaoTime2,
         membros: membros,
+        equipeEditada: widget.equipeEditavel,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -230,6 +245,28 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                 ],
               ),
             ),
+          if (!widget.readOnly && widget.equipeEditavel != null)
+            Container(
+              width: double.infinity,
+              color: AppColors.info.withValues(alpha: 0.10),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.workspace_premium_outlined,
+                    size: 16,
+                    color: AppColors.info,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Você pode montar somente a escalação do '
+                    '${widget.equipeEditavel == Equipe.time1 ? 'Time 1' : 'Time 2'}.',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Column(
@@ -247,7 +284,9 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                         ],
                   selected: {_formato},
                   onSelectionChanged:
-                      widget.readOnly ? null : (s) => _trocarFormato(s.first),
+                      widget.readOnly || !widget.podeAlterarFormato
+                          ? null
+                          : (s) => _trocarFormato(s.first),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -273,13 +312,13 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                           .map((f) => DropdownMenuItem(
                               value: f.nome, child: Text(f.nome)))
                           .toList(),
-                      onChanged: widget.readOnly
+                      onChanged: !_podeEditarTimeAtual
                           ? null
                           : (v) => v == null ? null : _aplicarFormacao(v),
                     ),
                     IconButton(
                       tooltip: 'Aplicar formação',
-                      onPressed: widget.readOnly
+                      onPressed: !_podeEditarTimeAtual
                           ? null
                           : () => _aplicarFormacao(_formacaoAtual),
                       icon: const Icon(Icons.auto_fix_high),
@@ -298,7 +337,7 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                   final w = c.maxWidth, h = c.maxHeight;
                   return DragTarget<_Jogador>(
                     onAcceptWithDetails: (det) {
-                      if (widget.readOnly) return;
+                      if (!_podeEditarTimeAtual) return;
                       final box = _pitchKey.currentContext?.findRenderObject()
                           as RenderBox?;
                       if (box == null) return;
@@ -337,10 +376,10 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
                                 left: (j.x * w) - 24,
                                 top: (j.y * h) - 24,
                                 child: GestureDetector(
-                                  onLongPress: widget.readOnly
+                                  onLongPress: !_podeEditarTimeAtual
                                       ? null
                                       : () => _menuJogador(j),
-                                  onPanUpdate: widget.readOnly
+                                  onPanUpdate: !_podeEditarTimeAtual
                                       ? null
                                       : (d) => setState(() {
                                             j.x = (j.x + d.delta.dx / w)
@@ -365,14 +404,16 @@ class _EscalacaoPageState extends State<EscalacaoPage> {
             jogadores: banco,
             cor: _corTime,
             onLongPress: _menuJogador,
-            readOnly: widget.readOnly,
+            readOnly: !_podeEditarTimeAtual,
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Text(
               widget.readOnly
                   ? 'Escalação salva ao finalizar a partida (somente leitura).'
-                  : 'Arraste do banco para o campo · arraste no campo para reposicionar · segure para mais opções',
+                  : !_podeEditarTimeAtual
+                      ? 'Este time está disponível somente para visualização.'
+                      : 'Arraste do banco para o campo · arraste no campo para reposicionar · segure para mais opções',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.inkMuted, fontSize: 11),
             ),

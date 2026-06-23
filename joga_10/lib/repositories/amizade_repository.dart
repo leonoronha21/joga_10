@@ -251,19 +251,31 @@ class AmizadeRepository {
   Future<void> enviarPedido(int meuId, int outroId) async {
     if (FirestoreCompatIds.habilitado) {
       final uid = FirestoreCompatIds.usuarioUid;
-      if (uid == null) return;
+      if (uid == null) {
+        throw StateError('Entre na sua conta para adicionar amigos.');
+      }
       final outroUid = await _uidUsuario(outroId);
-      if (outroUid == null || outroUid == uid) return;
-      await _firestore.collection('amizades').doc(_pairId(uid, outroUid)).set({
+      if (outroUid == null || outroUid == uid) {
+        throw StateError('Perfil nao encontrado.');
+      }
+      final ref = _firestore.collection('amizades').doc(_pairId(uid, outroUid));
+      final existente = await ref.get();
+      final statusAtual = existente.data()?['status'] as String?;
+      if (statusAtual == 'ACEITO') return;
+      await ref.set({
         'solicitanteId': uid,
         'destinatarioId': outroUid,
-        'usuarios': [uid, outroUid],
+        'usuarios': existente.data()?['usuarios'] ?? [uid, outroUid],
         'status': 'PENDENTE',
         'criadoEm': FieldValue.serverTimestamp(),
-      });
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: existente.exists));
       return;
     }
-    if (meuId == LocalDemoData.adminId) return;
+    if (meuId == LocalDemoData.adminId) {
+      LocalDemoData.instance.enviarPedidoAmizade(outroId);
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
@@ -284,7 +296,10 @@ class AmizadeRepository {
       await doc.reference.update({'status': status});
       return;
     }
-    if (amizadeId < 0) return;
+    if (amizadeId < 0) {
+      LocalDemoData.instance.responderPedidoAmizade(amizadeId, aceitar);
+      return;
+    }
     final conn = await _conn;
     await conn.execute(
       Sql.named('UPDATE amizade SET status = @s WHERE id = @id'),

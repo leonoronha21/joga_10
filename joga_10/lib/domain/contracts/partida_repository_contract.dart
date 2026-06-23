@@ -45,6 +45,13 @@ abstract interface class PartidaRepositoryContract {
     String? formacaoTime1,
     String? formacaoTime2,
     required List<PartidaMembro> membros,
+    String? equipeEditada,
+  });
+
+  Future<void> definirCapitao({
+    required int partidaId,
+    required String equipe,
+    required int membroId,
   });
 
   Future<void> adicionarMembro({
@@ -53,5 +60,10 @@ abstract interface class PartidaRepositoryContract {
     required String equipe,
     required String nome,
     String? telefone,
+  });
+
+  Future<void> removerMembro({
+    required int partidaId,
+    required int membroId,
   });
 }

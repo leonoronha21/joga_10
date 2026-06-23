@@ -96,4 +96,58 @@ void main() {
 
     expect(locais, isEmpty);
   });
+
+  test('busca categorias de quadras na região e remove duplicados', () async {
+    var chamadas = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      chamadas++;
+      return [
+        {
+          'placeId': 'quadra-unica',
+          'name': 'Complexo de Quadras',
+          'formattedAddress': 'Porto Alegre',
+          'latitude': -30.01,
+          'longitude': -51.20,
+        }
+      ];
+    });
+
+    final locais = await service.buscarQuadrasRegiao(
+      centro: const LatLng(-30, -51),
+    );
+
+    expect(chamadas, 7);
+    expect(locais, hasLength(1));
+    expect(locais.single.nome, 'Complexo de Quadras');
+  });
+
+  test('busca texto esportivo com variacoes e remove duplicados', () async {
+    final consultas = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      consultas.add(call.arguments['query'] as String);
+      return [
+        {
+          'placeId': 'planet-ball',
+          'name': 'Planet Ball',
+          'formattedAddress': 'Porto Alegre',
+          'latitude': -30.02,
+          'longitude': -51.18,
+          'primaryTypeDisplayName': 'Quadra de esportes',
+        }
+      ];
+    });
+
+    final locais = await service.buscarTextoEsportivo(
+      termo: 'Planet Ball',
+      centro: const LatLng(-30, -51),
+    );
+
+    expect(consultas, contains('Planet Ball'));
+    expect(consultas, contains('Planet Ball quadra esportiva'));
+    expect(consultas, contains('Planet Ball futebol society'));
+    expect(locais, hasLength(1));
+    expect(locais.single.nome, 'Planet Ball');
+  });
 }

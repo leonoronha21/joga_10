@@ -35,6 +35,10 @@ class LocalDemoData {
   final List<Cartao> cartoes = [];
   final Map<int, List<Comentario>> comentarios = {};
   final Map<int, PartidaRateio> rateios = {};
+  final Set<int> _amigosIds = {-11, -12, -13};
+  final Map<int, StatusAmizade> _statusAmizades = {
+    -14: StatusAmizade.pendenteRecebido,
+  };
 
   Uint8List? fotoAdmin;
   String? fotoAdminUrl;
@@ -82,6 +86,13 @@ class LocalDemoData {
       segundoNome: 'Lima',
       email: 'ana@demo.joga10',
       cidade: 'Sao Paulo',
+    ),
+    Usuario(
+      id: -15,
+      primeiroNome: 'Rafael',
+      segundoNome: 'Souza',
+      email: 'rafael@demo.joga10',
+      cidade: 'Porto Alegre',
     ),
   ];
 
@@ -326,6 +337,7 @@ class LocalDemoData {
         idEstabelecimento: -101,
         idQuadra: -201,
         organizadorId: adminId,
+        organizadorNome: 'Admin Local',
         duracao: '1h',
         dataHora: agora.add(const Duration(days: 3, hours: 2)),
         status: PartidaStatus.agendada,
@@ -334,10 +346,10 @@ class LocalDemoData {
         quadraNome: 'Society Principal',
         estabelecimentoNome: 'Arena Joga10 Paulista',
         membros: [
-          _membro(-811, adminId, Equipe.time1, 'Admin Local'),
+          _membro(-811, adminId, Equipe.time1, 'Admin Local', capitao: true),
           _membro(-812, -11, Equipe.time1, 'Bruno Silva'),
           _membro(-813, -12, Equipe.time1, 'Carla Mendes'),
-          _membro(-814, -13, Equipe.time2, 'Diego Costa'),
+          _membro(-814, -13, Equipe.time2, 'Diego Costa', capitao: true),
           _membro(-815, -14, Equipe.time2, 'Ana Lima'),
         ],
       ),
@@ -346,6 +358,7 @@ class LocalDemoData {
         idEstabelecimento: -102,
         idQuadra: -203,
         organizadorId: -11,
+        organizadorNome: 'Bruno Silva',
         duracao: '1h30',
         dataHora: agora.add(const Duration(days: 9)),
         status: PartidaStatus.agendada,
@@ -354,8 +367,8 @@ class LocalDemoData {
         quadraNome: 'Campo 7',
         estabelecimentoNome: 'Centro Esportivo Ibirapuera',
         membros: [
-          _membro(-821, adminId, Equipe.time2, 'Admin Local'),
-          _membro(-822, -11, Equipe.time1, 'Bruno Silva'),
+          _membro(-821, adminId, Equipe.time2, 'Admin Local', capitao: true),
+          _membro(-822, -11, Equipe.time1, 'Bruno Silva', capitao: true),
           _membro(-823, -13, Equipe.time1, 'Diego Costa'),
         ],
       ),
@@ -364,6 +377,7 @@ class LocalDemoData {
         idEstabelecimento: -101,
         idQuadra: -202,
         organizadorId: adminId,
+        organizadorNome: 'Admin Local',
         duracao: '1h',
         dataHora: agora.subtract(const Duration(days: 5)),
         status: PartidaStatus.finalizada,
@@ -385,6 +399,7 @@ class LocalDemoData {
         idEstabelecimento: -103,
         idQuadra: -205,
         organizadorId: adminId,
+        organizadorNome: 'Admin Local',
         duracao: '1h30',
         dataHora: agora.subtract(const Duration(days: 2)),
         status: PartidaStatus.finalizada,
@@ -515,12 +530,14 @@ class LocalDemoData {
     String equipe,
     String nome, {
     int gols = 0,
+    bool capitao = false,
   }) {
     return PartidaMembro(
       id: id,
       idUser: usuarioId,
       equipe: equipe,
       nome: nome,
+      capitao: capitao,
       gols: gols,
     );
   }
@@ -595,8 +612,22 @@ class LocalDemoData {
           telefone: telefone,
           equipe: equipe,
           nome: nome,
+          capitao: false,
         ),
       ],
+    );
+  }
+
+  void removerMembro({
+    required int partidaId,
+    required int membroId,
+  }) {
+    final index = partidas.indexWhere((p) => p.id == partidaId);
+    if (index < 0) return;
+    final atual = partidas[index];
+    partidas[index] = copiarPartida(
+      atual,
+      membros: atual.membros.where((membro) => membro.id != membroId).toList(),
     );
   }
 
@@ -612,6 +643,8 @@ class LocalDemoData {
       idEstabelecimento: partida.idEstabelecimento,
       idQuadra: partida.idQuadra,
       organizadorId: partida.organizadorId,
+      organizadorUid: partida.organizadorUid,
+      organizadorNome: partida.organizadorNome,
       duracao: partida.duracao,
       dataHora: partida.dataHora,
       status: status ?? partida.status,
@@ -633,16 +666,22 @@ class LocalDemoData {
   }
 
   List<Usuario> get amigos =>
-      usuarios.where((u) => u.id == -11 || u.id == -12 || u.id == -13).toList();
+      usuarios.where((u) => _amigosIds.contains(u.id)).toList();
 
-  List<PedidoAmizade> get pedidos => [
-        PedidoAmizade(
-          amizadeId: -981,
-          usuarioId: -14,
-          nome: 'Ana Lima',
-          email: 'ana@demo.joga10',
+  List<PedidoAmizade> get pedidos => usuarios
+      .where(
+        (usuario) =>
+            _statusAmizades[usuario.id] == StatusAmizade.pendenteRecebido,
+      )
+      .map(
+        (usuario) => PedidoAmizade(
+          amizadeId: -9000 + usuario.id,
+          usuarioId: usuario.id,
+          nome: usuario.nomeCompleto,
+          email: usuario.email,
         ),
-      ];
+      )
+      .toList();
 
   List<UsuarioBusca> buscarUsuarios(String termo) {
     final busca = termo.toLowerCase();
@@ -656,15 +695,26 @@ class LocalDemoData {
             id: u.id,
             nome: u.nomeCompleto,
             email: u.email,
-            status: amigos.any((a) => a.id == u.id)
+            status: _amigosIds.contains(u.id)
                 ? StatusAmizade.amigos
-                : u.id == -14
-                    ? StatusAmizade.pendenteRecebido
-                    : StatusAmizade.nenhuma,
-            amizadeId: u.id == -14 ? -981 : null,
+                : _statusAmizades[u.id] ?? StatusAmizade.nenhuma,
+            amizadeId: _statusAmizades.containsKey(u.id) ? -9000 + u.id : null,
           ),
         )
         .toList();
+  }
+
+  void enviarPedidoAmizade(int usuarioId) {
+    if (_amigosIds.contains(usuarioId)) return;
+    _statusAmizades[usuarioId] = StatusAmizade.pendenteEnviado;
+  }
+
+  void responderPedidoAmizade(int amizadeId, bool aceitar) {
+    final usuarioId = amizadeId + 9000;
+    if (aceitar) {
+      _amigosIds.add(usuarioId);
+    }
+    _statusAmizades.remove(usuarioId);
   }
 
   GamificacaoUsuario get gamificacaoAdmin => GamificacaoUsuario(

@@ -16,10 +16,12 @@ import com.google.android.libraries.places.api.net.PlacesClient;
 import com.google.android.libraries.places.api.net.SearchByTextRequest;
 import com.google.android.libraries.places.api.net.SearchNearbyRequest;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import io.flutter.embedding.android.FlutterActivity;
@@ -138,7 +140,7 @@ public class MainActivity extends FlutterActivity {
             return;
         }
         SearchByTextRequest request = SearchByTextRequest
-                .builder(query.trim() + " local para prática esportiva", SEARCH_FIELDS)
+                .builder(query.trim(), SEARCH_FIELDS)
                 .setLocationBias(areaFrom(call))
                 .setRegionCode("BR")
                 .setMaxResultCount(20)
@@ -188,18 +190,38 @@ public class MainActivity extends FlutterActivity {
                 if (SPORTS_TYPES.contains(type)) return true;
             }
         }
-        String name = place.getDisplayName();
-        if (name == null) return false;
-        String normalized = name.toLowerCase();
+        if (containsSportsKeyword(place.getDisplayName())) return true;
+        if (containsSportsKeyword(place.getFormattedAddress())) return true;
+        if (containsSportsKeyword(place.getPrimaryType())) return true;
+        return containsSportsKeyword(place.getPrimaryTypeDisplayName());
+    }
+
+    private boolean containsSportsKeyword(Object value) {
+        if (value == null) return false;
+        String normalized = Normalizer
+                .normalize(value.toString(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
         return normalized.contains("quadra")
                 || normalized.contains("esport")
                 || normalized.contains("ginásio")
                 || normalized.contains("ginasio")
                 || normalized.contains("arena")
+                || normalized.contains("athletic")
+                || normalized.contains("sports")
+                || normalized.contains("sport")
+                || normalized.contains("soccer")
+                || normalized.contains("ball")
                 || normalized.contains("futsal")
                 || normalized.contains("futebol")
+                || normalized.contains("society")
+                || normalized.contains("vôlei")
+                || normalized.contains("volei")
+                || normalized.contains("beach tennis")
                 || normalized.contains("tênis")
-                || normalized.contains("tenis");
+                || normalized.contains("tenis")
+                || normalized.contains("padel")
+                || normalized.contains("poliesportiva");
     }
 
     private Map<String, Object> placeToMap(Place place) {
@@ -207,6 +229,7 @@ public class MainActivity extends FlutterActivity {
         put(value, "placeId", place.getId());
         put(value, "name", place.getDisplayName());
         put(value, "formattedAddress", place.getFormattedAddress());
+        put(value, "primaryType", place.getPrimaryType());
         put(value, "primaryTypeDisplayName", place.getPrimaryTypeDisplayName());
         put(value, "rating", place.getRating());
         put(value, "userRatingCount", place.getUserRatingCount());

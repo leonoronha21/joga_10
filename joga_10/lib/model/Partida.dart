@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:joga_10/db/row_utils.dart';
 import 'package:joga_10/model/PartidaMembro.dart';
 
@@ -68,6 +69,8 @@ class Partida {
   final String recorrencia;
   final DateTime? recorrenciaAte;
   final List<PartidaMembro> membros;
+  final String? organizadorUid;
+  final String? organizadorNome;
 
   // Campos opcionais vindos de JOIN (para exibicao).
   final String? quadraNome;
@@ -93,6 +96,8 @@ class Partida {
     this.recorrencia = 'NENHUMA',
     this.recorrenciaAte,
     this.membros = const [],
+    this.organizadorUid,
+    this.organizadorNome,
     this.quadraNome,
     this.estabelecimentoNome,
   });
@@ -113,6 +118,14 @@ class Partida {
       membros.where((m) => m.equipe == Equipe.time1).toList();
   List<PartidaMembro> get time2 =>
       membros.where((m) => m.equipe == Equipe.time2).toList();
+  PartidaMembro? membroDoUsuario(int? usuarioId) {
+    if (usuarioId == null) return null;
+    return membros.where((membro) => membro.idUser == usuarioId).firstOrNull;
+  }
+
+  PartidaMembro? capitaoDoTime(String equipe) => membros
+      .where((membro) => membro.equipe == equipe && membro.capitao)
+      .firstOrNull;
 
   factory Partida.fromRow(
     Map<String, dynamic> row, {
@@ -143,6 +156,7 @@ class Partida {
       recorrencia: (row['recorrencia'] as String?) ?? 'NENHUMA',
       recorrenciaAte: row['recorrencia_ate'] as DateTime?,
       membros: membros,
+      organizadorNome: row['organizador_nome'] as String?,
       quadraNome: row['quadra_nome'] as String?,
       estabelecimentoNome: row['estabelecimento_nome'] as String?,
     );

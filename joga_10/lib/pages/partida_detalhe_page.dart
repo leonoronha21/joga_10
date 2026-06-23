@@ -11,6 +11,7 @@ import 'package:joga_10/model/PartidaMembro.dart';
 import 'package:joga_10/pages/escalacao_page.dart';
 import 'package:joga_10/pages/finalizar_partida_page.dart';
 import 'package:joga_10/pages/rateio_partida_page.dart';
+import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/contatos.dart';
 import 'package:joga_10/util/format.dart';
@@ -48,7 +49,7 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
 
   Future<void> _carregarSessao() async {
     final usuario = await _sessao.restaurarLocal();
-    final id = usuario?.id ?? await _sessao.usuarioId;
+    final id = await _sessao.usuarioId ?? usuario?.id;
     if (!mounted) return;
     setState(() {
       _meuId = id;
@@ -119,6 +120,42 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
     }
   }
 
+  Future<void> _sairDaPartida(Partida partida, PartidaMembro membro) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Sair da partida?'),
+        content: const Text(
+          'Sua vaga sera liberada para outro jogador.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || membro.id == null) return;
+    try {
+      await _repo.removerMembro(
+        partidaId: partida.id,
+        membroId: membro.id!,
+      );
+      if (!mounted) return;
+      _msg('Voce saiu da partida.');
+      _recarregar();
+    } on StateError catch (erro) {
+      _msg(erro.message);
+    } catch (_) {
+      _msg('Nao foi possivel sair da partida.');
+    }
+  }
+
   Future<void> _convidarWhatsApp(Partida partida) async {
     try {
       final abriu = await _convites.abrirConviteWhatsApp(partida);
@@ -142,6 +179,14 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
   }
 
   bool _timesCompletos(Partida partida) => _participar.timesCompletos(partida);
+
+  bool _souOrganizador(Partida partida) {
+    final uid = FirestoreCompatIds.usuarioUid;
+    if (uid != null && partida.organizadorUid != null) {
+      return partida.organizadorUid == uid;
+    }
+    return _meuId != null && partida.organizadorId == _meuId;
+  }
 
   Future<PartidaMembro?> _perguntarJogador(String equipe) {
     final c = TextEditingController();
@@ -205,13 +250,81 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
     if (ok == true) _recarregar();
   }
 
-  Future<void> _abrirEscalacao(Partida p, bool podeAlterar) async {
+  Future<void> _definirCapitao(Partida partida, String equipe) async {
+    final candidatos = partida.membros
+        .where(
+          (membro) =>
+              membro.equipe == equipe &&
+              membro.id != null &&
+              membro.idUser != null,
+        )
+        .toList();
+    if (candidatos.isEmpty) {
+      _msg('Adicione ao time um jogador cadastrado no app.');
+      return;
+    }
+    final membroId = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(
+          'Capitão do ${equipe == Equipe.time1 ? 'Time 1' : 'Time 2'}',
+        ),
+        children: candidatos
+            .map(
+              (membro) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, membro.id),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    membro.capitao
+                        ? Icons.workspace_premium
+                        : Icons.person_outline,
+                    color:
+                        membro.capitao ? AppColors.warning : AppColors.inkMuted,
+                  ),
+                  title: Text(membro.nome),
+                  trailing: membro.capitao
+                      ? const Text(
+                          'Atual',
+                          style: TextStyle(color: AppColors.inkMuted),
+                        )
+                      : null,
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (membroId == null) return;
+    try {
+      await _repo.definirCapitao(
+        partidaId: partida.id,
+        equipe: equipe,
+        membroId: membroId,
+      );
+      _msg('Capitão definido.');
+      _recarregar();
+    } on StateError catch (erro) {
+      _msg(erro.message);
+    } catch (_) {
+      _msg('Não foi possível definir o capitão.');
+    }
+  }
+
+  Future<void> _abrirEscalacao(
+    Partida p, {
+    required bool podeAlterar,
+    String? equipeEditavel,
+    required bool podeAlterarFormato,
+  }) async {
     final mudou = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => EscalacaoPage(
           partida: p,
           readOnly: !podeAlterar,
+          equipeEditavel: equipeEditavel,
+          podeAlterarFormato: podeAlterarFormato,
         ),
       ),
     );
@@ -241,15 +354,25 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   'conta Google para abrir partidas compartilhadas.',
             );
           }
-          final podeAlterar = p.status == PartidaStatus.agendada ||
+          final partidaAberta = p.status == PartidaStatus.agendada ||
               p.status == PartidaStatus.emAndamento;
           final meuNome = _nomeJogador(null);
           final jaEstou = _jaEstouNaPartida(p, _meuId, meuNome);
+          final souOrganizador = _souOrganizador(p);
+          final meuMembro = p.membroDoUsuario(_meuId);
+          final equipeCapitao =
+              meuMembro?.capitao == true ? meuMembro?.equipe : null;
+          final souParticipante = souOrganizador || meuMembro != null;
+          final visitantePublico = p.publica && !souParticipante;
+          final podeEditarEscalacao =
+              partidaAberta && (souOrganizador || equipeCapitao != null);
           final podeEntrar = p.publica &&
-              podeAlterar &&
+              partidaAberta &&
               _meuId != null &&
               !jaEstou &&
               !_timesCompletos(p);
+          final podeSair =
+              partidaAberta && !souOrganizador && meuMembro?.id != null;
 
           return ListView(
             padding: const EdgeInsets.all(20),
@@ -283,14 +406,15 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    _info(
-                      p.isVolei ? Icons.sports_volleyball : Icons.sports_soccer,
-                      '${ModalidadePartida.label(p.modalidade)} · ${p.formato}',
-                    ),
+                    _modalidadeInfo(p),
                     _info(
                       p.publica ? Icons.public : Icons.lock_outline,
                       '${VisibilidadePartida.label(p.visibilidade)} · '
                       '${p.publica ? 'visível para todos' : 'somente convidados'}',
+                    ),
+                    _info(
+                      Icons.person_outline,
+                      'Dono: ${p.organizadorNome ?? 'Organizador #${p.organizadorId}'}',
                     ),
                     _info(Icons.tag_outlined, 'ID da partida: ${p.id}'),
                     _info(Icons.event, formatarDataHora(p.dataHora)),
@@ -298,6 +422,27 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       _info(Icons.timer_outlined, 'Duracao: ${p.duracao}'),
                     if (p.preco > 0)
                       _info(Icons.payments_outlined, formatarMoeda(p.preco)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _metaChip(
+                          Icons.group_outlined,
+                          '${p.membros.length}/${p.jogadoresPorTime * 2} jogadores',
+                        ),
+                        _metaChip(
+                          p.publica
+                              ? Icons.travel_explore
+                              : Icons.verified_user,
+                          p.publica ? 'Entrada aberta' : 'Acesso privado',
+                        ),
+                        _metaChip(
+                          Icons.sports_score_outlined,
+                          PartidaStatus.label(p.status),
+                        ),
+                      ],
+                    ),
                     if (p.temPlacar) ...[
                       const SizedBox(height: 12),
                       const Divider(height: 1),
@@ -342,12 +487,20 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              _CampoEscalacaoCard(
-                partida: p,
-                podeAlterar: podeAlterar,
-                onTap: () => _abrirEscalacao(p, podeAlterar),
-              ),
+              if (!visitantePublico) ...[
+                const SizedBox(height: 12),
+                _CampoEscalacaoCard(
+                  partida: p,
+                  podeAlterar: podeEditarEscalacao,
+                  equipeEditavel: souOrganizador ? null : equipeCapitao,
+                  onTap: () => _abrirEscalacao(
+                    p,
+                    podeAlterar: podeEditarEscalacao,
+                    equipeEditavel: souOrganizador ? null : equipeCapitao,
+                    podeAlterarFormato: souOrganizador,
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +511,12 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       cor: AppColors.info,
                       membros: p.time1,
                       mostrarGols: !p.isVolei,
-                      onAdd: () => _adicionarMembro(p, Equipe.time1),
+                      onAdd: souOrganizador && partidaAberta
+                          ? () => _adicionarMembro(p, Equipe.time1)
+                          : null,
+                      onDefinirCapitao: souOrganizador && partidaAberta
+                          ? () => _definirCapitao(p, Equipe.time1)
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -368,28 +526,35 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                       cor: AppColors.accent,
                       membros: p.time2,
                       mostrarGols: !p.isVolei,
-                      onAdd: () => _adicionarMembro(p, Equipe.time2),
+                      onAdd: souOrganizador && partidaAberta
+                          ? () => _adicionarMembro(p, Equipe.time2)
+                          : null,
+                      onDefinirCapitao: souOrganizador && partidaAberta
+                          ? () => _definirCapitao(p, Equipe.time2)
+                          : null,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () => _convidarWhatsApp(p),
-                icon: const Icon(Icons.share_outlined),
-                label: const Text('Convidar via WhatsApp'),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RateioPartidaPage(partida: p),
-                  ),
+              if (souOrganizador) ...[
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: () => _convidarWhatsApp(p),
+                  icon: const Icon(Icons.share_outlined),
+                  label: const Text('Convidar via WhatsApp'),
                 ),
-                icon: const Icon(Icons.account_balance_wallet_outlined),
-                label: const Text('Rateio e pagamentos'),
-              ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RateioPartidaPage(partida: p),
+                    ),
+                  ),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text('Rateio e pagamentos'),
+                ),
+              ],
               if (podeEntrar) ...[
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
@@ -398,8 +563,20 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                   label: const Text('Entrar nesta partida'),
                 ),
               ],
+              if (podeSair) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => _sairDaPartida(p, meuMembro!),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger),
+                  ),
+                  icon: const Icon(Icons.logout_outlined),
+                  label: const Text('Sair da partida'),
+                ),
+              ],
               const SizedBox(height: 12),
-              if (podeAlterar)
+              if (souOrganizador && partidaAberta)
                 OutlinedButton.icon(
                   onPressed: () => _finalizar(p),
                   icon: const Icon(Icons.flag_outlined),
@@ -411,6 +588,38 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
       ),
     );
   }
+
+  Widget _modalidadeInfo(Partida partida) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            if (partida.isVolei)
+              Image.asset(
+                'lib/assets/img/voleibol.png',
+                width: 18,
+                height: 18,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.sports_volleyball,
+                  size: 18,
+                  color: AppColors.inkMuted,
+                ),
+              )
+            else
+              const Icon(
+                Icons.sports_soccer,
+                size: 18,
+                color: AppColors.inkMuted,
+              ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${ModalidadePartida.label(partida.modalidade)} - ${partida.formato}',
+                style: const TextStyle(color: AppColors.ink),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _info(IconData icon, String texto) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
@@ -424,24 +633,52 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
           ],
         ),
       );
+
+  Widget _metaChip(IconData icon, String texto) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.16)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              texto,
+              style: const TextStyle(
+                color: AppColors.ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _CampoEscalacaoCard extends StatelessWidget {
   final Partida partida;
   final bool podeAlterar;
+  final String? equipeEditavel;
   final VoidCallback onTap;
 
   const _CampoEscalacaoCard({
     required this.partida,
     required this.podeAlterar,
+    required this.equipeEditavel,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final texto = podeAlterar
-        ? 'Escalar time (${partida.formato})'
-        : 'Ver escalacao (${partida.formato})';
+        ? equipeEditavel == null
+            ? 'Escalar times (${partida.formato})'
+            : 'Montar ${equipeEditavel == Equipe.time1 ? 'Time 1' : 'Time 2'}'
+        : 'Ver escalação (${partida.formato})';
 
     return Semantics(
       button: true,
@@ -465,7 +702,7 @@ class _CampoEscalacaoCard extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(26, 14, 26, 38),
                       child: Image.asset(
                         partida.isVolei
-                            ? 'lib/assets/img/volei.png'
+                            ? 'lib/assets/img/voleibol.png'
                             : 'lib/assets/img/futebol.png',
                         fit: BoxFit.contain,
                       ),
@@ -538,7 +775,8 @@ class _Time extends StatelessWidget {
   final Color cor;
   final List<PartidaMembro> membros;
   final bool mostrarGols;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
+  final VoidCallback? onDefinirCapitao;
 
   const _Time({
     required this.titulo,
@@ -546,6 +784,7 @@ class _Time extends StatelessWidget {
     required this.membros,
     required this.mostrarGols,
     required this.onAdd,
+    required this.onDefinirCapitao,
   });
 
   @override
@@ -617,6 +856,18 @@ class _Time extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (m.capitao)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Tooltip(
+                          message: 'Capitão',
+                          child: Icon(
+                            Icons.workspace_premium,
+                            size: 18,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ),
                     if (mostrarGols && m.gols > 0) ...[
                       const Icon(
                         Icons.sports_soccer,
@@ -634,15 +885,28 @@ class _Time extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.person_add_alt),
-            label: const Text(
-              'Adicionar jogador',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          if (onAdd != null)
+            TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text(
+                'Adicionar jogador',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
+          if (onDefinirCapitao != null)
+            TextButton.icon(
+              onPressed: onDefinirCapitao,
+              icon: const Icon(Icons.workspace_premium_outlined),
+              label: Text(
+                membros.any((membro) => membro.capitao)
+                    ? 'Trocar capitão'
+                    : 'Definir capitão',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
         ],
       ),
     );

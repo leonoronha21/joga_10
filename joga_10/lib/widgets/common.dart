@@ -173,7 +173,8 @@ class StatusBadge extends StatelessWidget {
 class StatusBadgeGenerico extends StatelessWidget {
   final String texto;
   final Color cor;
-  const StatusBadgeGenerico({super.key, required this.texto, required this.cor});
+  const StatusBadgeGenerico(
+      {super.key, required this.texto, required this.cor});
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +210,7 @@ class AppCard extends StatelessWidget {
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),

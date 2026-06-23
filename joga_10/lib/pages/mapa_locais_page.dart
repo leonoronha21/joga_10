@@ -67,8 +67,10 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
 
   Future<void> _carregarIniciais() async {
     final cadastrados = await _repo.listarComLocalizacao();
-    final encontrados =
-        await _places.buscarProximos(centro: _centroInicial, raioMetros: 50000);
+    final encontrados = await _places.buscarQuadrasRegiao(
+      centro: _centroInicial,
+      raioMetros: 50000,
+    );
     if (!mounted) return;
     setState(() {
       _locais = LocaisEsportivosCatalogo.mesclarSomente([
@@ -96,7 +98,7 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
   Future<void> _buscarTexto(String termo) async {
     final versao = ++_versaoBusca;
     setState(() => _buscandoPlaces = true);
-    final resultados = await _places.buscarTexto(
+    final resultados = await _places.buscarTextoEsportivo(
       termo: termo,
       centro: _centroAtual,
       raioMetros: 50000,
@@ -111,7 +113,7 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
   Future<void> _buscarNestaArea() async {
     _fecharTeclado();
     setState(() => _buscandoPlaces = true);
-    final resultados = await _places.buscarProximos(
+    final resultados = await _places.buscarQuadrasRegiao(
       centro: _centroAtual,
       raioMetros: 30000,
     );
