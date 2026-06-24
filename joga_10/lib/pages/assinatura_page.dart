@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/core/app_dependencies.dart';
-import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/sessao_contract.dart';
-import 'package:joga_10/model/Monetizacao.dart';
 import 'package:joga_10/theme/app_colors.dart';
-import 'package:joga_10/util/format.dart';
 import 'package:joga_10/widgets/common.dart';
 
 class AssinaturaPage extends StatefulWidget {
@@ -16,80 +13,46 @@ class AssinaturaPage extends StatefulWidget {
 }
 
 class _AssinaturaPageState extends State<AssinaturaPage> {
-  late final MonetizacaoRepositoryContract _repo;
   late final SessaoContract _sessao;
-  Future<_DadosAssinatura?>? _futuro;
-  bool _ativando = false;
+  Future<bool>? _futuro;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_futuro != null) return;
     final dependencies = AppDependenciesScope.of(context);
-    _repo = dependencies.monetizacao;
     _sessao = dependencies.sessao;
     _futuro = _carregar();
   }
 
-  Future<_DadosAssinatura?> _carregar() async {
+  Future<bool> _carregar() async {
     final id = await _sessao.usuarioId;
-    if (id == null) return null;
-    final resultados = await Future.wait([
-      _repo.listarPlanos(),
-      _repo.buscarAssinatura(id),
-    ]);
-    return _DadosAssinatura(
-      usuarioId: id,
-      planos: resultados[0] as List<PlanoAssinatura>,
-      assinatura: resultados[1] as AssinaturaUsuario?,
-    );
-  }
-
-  Future<void> _ativarTeste(int usuarioId) async {
-    setState(() => _ativando = true);
-    try {
-      await _repo.ativarTestePro(usuarioId);
-      if (!mounted) return;
-      _msg('Teste local do Joga10 Pro ativado por 30 dias.');
-      setState(() => _futuro = _carregar());
-    } catch (_) {
-      _msg('Nao foi possivel ativar o teste.');
-    } finally {
-      if (mounted) setState(() => _ativando = false);
-    }
-  }
-
-  void _msg(String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+    return id != null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Joga10 Pro')),
-      body: FutureBuilder<_DadosAssinatura?>(
+      appBar: AppBar(title: const Text('Recursos liberados')),
+      body: FutureBuilder<bool>(
         future: _futuro!,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const LoadingView();
           }
-          final dados = snapshot.data;
-          if (dados == null) {
+          if (snapshot.data != true) {
             return const EmptyState(
               icone: Icons.workspace_premium_outlined,
               titulo: 'Plano indisponivel',
             );
           }
-          return _conteudo(dados);
+          return _conteudo();
         },
       ),
     );
   }
 
-  Widget _conteudo(_DadosAssinatura dados) {
-    final planosPro = dados.planos.where((p) => p.codigo == 'PRO').toList();
-    final pro = planosPro.isEmpty ? null : planosPro.first;
-    final assinaturaAtiva = dados.assinatura?.ativa == true;
+  Widget _conteudo() {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -108,33 +71,25 @@ class _AssinaturaPageState extends State<AssinaturaPage> {
                 size: 32,
               ),
               const SizedBox(height: 12),
-              Text(
-                assinaturaAtiva ? 'Joga10 Pro ativo' : 'Joga10 Pro',
-                style: const TextStyle(
+              const Text(
+                'Joga10 liberado',
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              if (assinaturaAtiva && dados.assinatura?.fimEm != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Teste local ate ${formatarData(dados.assinatura!.fimEm!)}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ] else if (pro != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${formatarMoeda(pro.precoMensal)} por mes',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+              const SizedBox(height: 4),
+              const Text(
+                'Sem cobranca enquanto a monetizacao estiver pausada.',
+                style: TextStyle(color: Colors.white70),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 20),
         const Text(
-          'Recursos Pro',
+          'Recursos disponiveis',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
@@ -144,17 +99,8 @@ class _AssinaturaPageState extends State<AssinaturaPage> {
         _beneficio(Icons.percent_outlined, 'Rateios sem taxa'),
         _beneficio(Icons.auto_awesome_outlined, 'Conquistas exclusivas'),
         const SizedBox(height: 18),
-        if (!assinaturaAtiva)
-          ElevatedButton.icon(
-            onPressed: _ativando || pro == null
-                ? null
-                : () => _ativarTeste(dados.usuarioId),
-            icon: const Icon(Icons.play_circle_outline),
-            label: Text(_ativando ? 'Ativando...' : 'Ativar teste local'),
-          ),
-        const SizedBox(height: 12),
         const Text(
-          'A assinatura real sera conectada ao Google Play Billing antes da publicacao.',
+          'Assinaturas e taxas serao reavaliadas em uma etapa futura.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
         ),
@@ -183,16 +129,4 @@ class _AssinaturaPageState extends State<AssinaturaPage> {
       ),
     );
   }
-}
-
-class _DadosAssinatura {
-  final int usuarioId;
-  final List<PlanoAssinatura> planos;
-  final AssinaturaUsuario? assinatura;
-
-  const _DadosAssinatura({
-    required this.usuarioId,
-    required this.planos,
-    required this.assinatura,
-  });
 }

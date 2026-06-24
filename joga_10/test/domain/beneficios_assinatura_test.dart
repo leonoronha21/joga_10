@@ -6,9 +6,9 @@ import 'package:joga_10/model/Monetizacao.dart';
 void main() {
   const beneficios = BeneficiosAssinatura();
 
-  test('plano free paga 2,5% e não acessa campeonatos', () {
-    expect(beneficios.taxaRateio(null), 2.5);
-    expect(beneficios.podeAcessarCampeonatos(null), isFalse);
+  test('plano free esta liberado sem taxa e com campeonatos', () {
+    expect(beneficios.taxaRateio(null), 0);
+    expect(beneficios.podeAcessarCampeonatos(null), isTrue);
   });
 
   test('assinatura Pro ativa tem rateio sem taxa e campeonatos', () {

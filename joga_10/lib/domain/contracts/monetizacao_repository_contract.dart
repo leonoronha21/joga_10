@@ -9,7 +9,12 @@ abstract interface class MonetizacaoRepositoryContract {
     required double valorQuadra,
   });
 
-  Future<void> atualizarStatusCobranca(int cobrancaId, String status);
+  Future<void> atualizarStatusCobranca(
+    int cobrancaId,
+    String status, {
+    String? metodoPagamento,
+    String? comprovanteUrl,
+  });
 
   Future<void> fecharRateio(int rateioId);
 

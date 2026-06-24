@@ -243,7 +243,15 @@ class _PartidaCard extends StatelessWidget {
                           color: cor,
                         ),
                       )
-                    : Icon(Icons.sports_soccer, color: cor),
+                    : Image.asset(
+                        'lib/assets/img/futebol.png',
+                        width: 24,
+                        height: 24,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.sports_soccer,
+                          color: cor,
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(

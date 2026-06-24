@@ -365,8 +365,13 @@ service cloud.firestore {
 
     // ---- Rateio (divisão de custos) ----
     match /rateios/{documentId} {
-      allow read: if signedIn()
-        && resource.data.organizadorId == request.auth.uid;
+      allow read: if signedIn() && (
+        resource.data.organizadorId == request.auth.uid
+        || (
+          'participantesUids' in resource.data
+          && resource.data.participantesUids.hasAny([request.auth.uid])
+        )
+      );
       // Só o organizador da partida cria/recalcula/fecha o rateio.
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
@@ -376,12 +381,27 @@ service cloud.firestore {
     }
 
     match /cobrancas/{documentId} {
-      allow read: if signedIn()
-        && resource.data.organizadorId == request.auth.uid;
+      allow read: if signedIn() && (
+        resource.data.organizadorId == request.auth.uid
+        || resource.data.idUserUid == request.auth.uid
+        || (
+          'participantesUids' in resource.data
+          && resource.data.participantesUids.hasAny([request.auth.uid])
+        )
+      );
       allow create: if signedIn()
         && request.resource.data.organizadorId == request.auth.uid;
-      allow update: if signedIn()
-        && resource.data.organizadorId == request.auth.uid;
+      allow update: if signedIn() && (
+        resource.data.organizadorId == request.auth.uid
+        || (
+          resource.data.idUserUid == request.auth.uid
+          && changedOnly([
+            'status', 'pagoEm', 'metodoPagamento',
+            'comprovanteUrl', 'atualizadoEm'
+          ])
+          && request.resource.data.status == 'PAGO'
+        )
+      );
       allow delete: if false;
     }
 

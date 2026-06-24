@@ -317,7 +317,7 @@ class LocalDemoData {
       id: -1,
       codigo: 'FREE',
       nome: 'Joga10 Free',
-      descricao: 'Partidas e convites, com taxa de 2,5% em cada rateio.',
+      descricao: 'Partidas, convites e rateios liberados sem taxa.',
       precoMensal: 0,
     ),
     PlanoAssinatura(
@@ -513,12 +513,12 @@ class LocalDemoData {
     rateios[-801] = criarRateio(
       partidaId: -801,
       valorQuadra: 180,
-      taxaPercentual: 2.5,
+      taxaPercentual: 0,
     );
     rateios[-803] = criarRateio(
       partidaId: -803,
       valorQuadra: 140,
-      taxaPercentual: 2.5,
+      taxaPercentual: 0,
       todosPagos: true,
       fechado: true,
     );
@@ -574,6 +574,8 @@ class LocalDemoData {
         valorTotal: valores.totalPorJogador,
         status: pago ? CobrancaStatus.pago : CobrancaStatus.pendente,
         pagoEm: pago ? DateTime.now() : null,
+        metodoPagamento: existente?.metodoPagamento,
+        comprovanteUrl: existente?.comprovanteUrl,
       );
     }).toList();
     final rateio = PartidaRateio(

@@ -6,7 +6,6 @@ import 'package:joga_10/db/app_database.dart';
 import 'package:joga_10/domain/contracts/database_provider.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/pagamento_provider_contract.dart';
-import 'package:joga_10/domain/services/beneficios_assinatura.dart';
 import 'package:joga_10/domain/services/calculadora_rateio.dart';
 import 'package:joga_10/model/Monetizacao.dart';
 import 'package:joga_10/model/Partida.dart';
@@ -19,19 +18,16 @@ import 'package:joga_10/services/sessao.dart';
 class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   final DatabaseProvider _database;
   final CalculadoraRateio _calculadora;
-  final BeneficiosAssinatura _beneficios;
   final PagamentoProviderContract _pagamentos;
   final FirebaseFirestore? _firestoreConfigurado;
 
   MonetizacaoRepository({
     DatabaseProvider? database,
     CalculadoraRateio calculadora = const CalculadoraRateio(),
-    BeneficiosAssinatura beneficios = const BeneficiosAssinatura(),
     PagamentoProviderContract pagamentos = const PagamentoDemoProvider(),
     FirebaseFirestore? firestore,
   })  : _database = database ?? AppDatabase.instance,
         _calculadora = calculadora,
-        _beneficios = beneficios,
         _pagamentos = pagamentos,
         _firestoreConfigurado = firestore;
 
@@ -41,7 +37,6 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
 
   @override
   Future<PartidaRateio?> buscarRateioPorPartida(int partidaId) async {
-    if (!await _souOrganizadorDaPartida(partidaId)) return null;
     if (FirestoreCompatIds.habilitado) return _buscarRateioFirestore(partidaId);
     if (partidaId < 0) return LocalDemoData.instance.rateios[partidaId];
     final conn = await _conn;
@@ -199,66 +194,22 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
     return (await buscarRateioPorPartida(partidaId))!;
   }
 
-  Future<double> _taxaRateioDaPartida(int partidaId) async {
-    if (FirestoreCompatIds.habilitado) {
-      final partida = await _partidaDocPorId(partidaId);
-      final organizadorUid = partida?.data()?['organizadorId'] as String?;
-      if (organizadorUid != FirestoreCompatIds.usuarioUid) {
-        return BeneficiosAssinatura.taxaRateioFree;
-      }
-      final usuarioId = Sessao.instance.atual?.id;
-      final assinatura =
-          usuarioId == null ? null : await buscarAssinatura(usuarioId);
-      return _beneficios.taxaRateio(assinatura);
-    }
-
-    if (partidaId < 0) {
-      final partida = LocalDemoData.instance.buscarPartida(partidaId);
-      final assinatura = partida?.organizadorId == LocalDemoData.adminId
-          ? LocalDemoData.instance.assinatura
-          : null;
-      return _beneficios.taxaRateio(assinatura);
-    }
-
-    final conn = await _conn;
-    final rows = await conn.execute(
-      Sql.named('''
-        SELECT
-          a.status,
-          a.inicio_em,
-          a.fim_em,
-          a.origem,
-          a.id AS assinatura_id,
-          a.usuario_id,
-          pl.*
-        FROM partida p
-        LEFT JOIN assinatura_usuario a ON a.usuario_id = p.organizador_id
-        LEFT JOIN plano_assinatura pl ON pl.id = a.plano_id
-        WHERE p.id = @partida
-      '''),
-      parameters: {'partida': partidaId},
-    );
-    if (rows.isEmpty) throw StateError('Partida não encontrada.');
-    final row = rows.first.toColumnMap();
-    if (row['assinatura_id'] == null || row['id'] == null) {
-      return BeneficiosAssinatura.taxaRateioFree;
-    }
-    final assinatura = AssinaturaUsuario(
-      id: row['assinatura_id'] as int,
-      usuarioId: row['usuario_id'] as int,
-      plano: PlanoAssinatura.fromRow(row),
-      status: row['status'] as String,
-      inicioEm: row['inicio_em'] as DateTime,
-      fimEm: row['fim_em'] as DateTime?,
-      origem: row['origem'] as String,
-    );
-    return _beneficios.taxaRateio(assinatura);
-  }
+  Future<double> _taxaRateioDaPartida(int partidaId) async => 0;
 
   @override
-  Future<void> atualizarStatusCobranca(int cobrancaId, String status) async {
+  Future<void> atualizarStatusCobranca(
+    int cobrancaId,
+    String status, {
+    String? metodoPagamento,
+    String? comprovanteUrl,
+  }) async {
     if (FirestoreCompatIds.habilitado) {
-      return _atualizarStatusCobrancaFirestore(cobrancaId, status);
+      return _atualizarStatusCobrancaFirestore(
+        cobrancaId,
+        status,
+        metodoPagamento: metodoPagamento,
+        comprovanteUrl: comprovanteUrl,
+      );
     }
     if (cobrancaId < 0) {
       final demo = LocalDemoData.instance;
@@ -274,21 +225,24 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
               referenciaCobranca: cobranca.id.toString(),
               valorCentavos: (cobranca.valorTotal * 100).round(),
               descricao: 'Rateio da partida ${atual.partidaId}',
+              metadados: {
+                if (metodoPagamento != null) 'metodoPagamento': metodoPagamento,
+                if (comprovanteUrl != null) 'comprovanteUrl': comprovanteUrl,
+              },
             ),
           );
         }
         final cobrancas = [...atual.cobrancas];
-        cobrancas[index] = RateioCobranca(
-          id: cobranca.id,
-          rateioId: cobranca.rateioId,
-          partidaMembroId: cobranca.partidaMembroId,
-          idUser: cobranca.idUser,
-          nome: cobranca.nome,
-          valorQuadra: cobranca.valorQuadra,
-          taxaServico: cobranca.taxaServico,
-          valorTotal: cobranca.valorTotal,
+        cobrancas[index] = cobranca.copyWith(
           status: status,
           pagoEm: status == CobrancaStatus.pago ? DateTime.now() : null,
+          limparPagoEm: status != CobrancaStatus.pago,
+          metodoPagamento: status == CobrancaStatus.pago
+              ? metodoPagamento ?? _pagamentos.nome
+              : null,
+          limparMetodoPagamento: status != CobrancaStatus.pago,
+          comprovanteUrl: status == CobrancaStatus.pago ? comprovanteUrl : null,
+          limparComprovante: status != CobrancaStatus.pago,
         );
         demo.rateios[entry.key] = PartidaRateio(
           id: atual.id,
@@ -303,6 +257,7 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       return;
     }
     final conn = await _conn;
+    await _garantirColunasPagamentoRateio(conn);
     ResultadoPagamento? pagamento;
     if (status == CobrancaStatus.pago) {
       final cobrancas = await conn.execute(
@@ -317,6 +272,10 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           referenciaCobranca: cobrancaId.toString(),
           valorCentavos: (valorTotal * 100).round(),
           descricao: 'Rateio Joga10',
+          metadados: {
+            if (metodoPagamento != null) 'metodoPagamento': metodoPagamento,
+            if (comprovanteUrl != null) 'comprovanteUrl': comprovanteUrl,
+          },
         ),
       );
     }
@@ -334,13 +293,30 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           UPDATE rateio_cobranca SET
             status = @status,
             pago_em = CASE WHEN @status = 'PAGO' THEN now() ELSE NULL END,
+            metodo_pagamento = CASE
+              WHEN @status = 'PAGO' THEN @metodo_pagamento
+              ELSE NULL
+            END,
+            comprovante_url = CASE
+              WHEN @status = 'PAGO' THEN @comprovante_url
+              ELSE NULL
+            END,
             atualizado_em = now()
           WHERE id = @id
         '''),
-        parameters: {'id': cobrancaId, 'status': status},
+        parameters: {
+          'id': cobrancaId,
+          'status': status,
+          'metodo_pagamento': status == CobrancaStatus.pago
+              ? metodoPagamento ?? _pagamentos.nome
+              : null,
+          'comprovante_url':
+              status == CobrancaStatus.pago ? comprovanteUrl : null,
+        },
       );
 
       if (status == CobrancaStatus.pago) {
+        final pagamentoConfirmado = pagamento!;
         await tx.execute(
           Sql.named('''
             INSERT INTO pagamento_transacao
@@ -351,9 +327,9 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           '''),
           parameters: {
             'id': cobrancaId,
-            'provedor': pagamento!.provedor,
-            'referencia': pagamento.referenciaExterna,
-            'status': pagamento.status,
+            'provedor': metodoPagamento ?? pagamentoConfirmado.provedor,
+            'referencia': pagamentoConfirmado.referenciaExterna,
+            'status': pagamentoConfirmado.status,
           },
         );
       }
@@ -361,6 +337,17 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       final idUser = cobranca['id_user'] as int?;
       if (idUser != null) await _sincronizarGamificacao(tx, idUser);
     });
+  }
+
+  Future<void> _garantirColunasPagamentoRateio(Pool conn) async {
+    await conn.execute(
+      'ALTER TABLE rateio_cobranca '
+      'ADD COLUMN IF NOT EXISTS metodo_pagamento TEXT',
+    );
+    await conn.execute(
+      'ALTER TABLE rateio_cobranca '
+      'ADD COLUMN IF NOT EXISTS comprovante_url TEXT',
+    );
   }
 
   @override
@@ -670,7 +657,11 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
   }
 
   Future<void> _atualizarStatusCobrancaFirestore(
-      int cobrancaId, String status) async {
+    int cobrancaId,
+    String status, {
+    String? metodoPagamento,
+    String? comprovanteUrl,
+  }) async {
     final doc = await _cobrancaDocPorId(cobrancaId);
     if (doc == null) return;
     if (status == CobrancaStatus.pago) {
@@ -680,6 +671,10 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
           referenciaCobranca: doc.id,
           valorCentavos: (valorTotal * 100).round(),
           descricao: 'Rateio Joga10',
+          metadados: {
+            if (metodoPagamento != null) 'metodoPagamento': metodoPagamento,
+            if (comprovanteUrl != null) 'comprovanteUrl': comprovanteUrl,
+          },
         ),
       );
     }
@@ -687,6 +682,10 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       'status': status,
       'pagoEm':
           status == CobrancaStatus.pago ? FieldValue.serverTimestamp() : null,
+      'metodoPagamento': status == CobrancaStatus.pago
+          ? metodoPagamento ?? _pagamentos.nome
+          : null,
+      'comprovanteUrl': status == CobrancaStatus.pago ? comprovanteUrl : null,
       'atualizadoEm': FieldValue.serverTimestamp(),
     });
   }
@@ -706,6 +705,8 @@ class MonetizacaoRepository implements MonetizacaoRepositoryContract {
       valorTotal: (m['valorTotal'] as num?)?.toDouble() ?? 0,
       status: (m['status'] as String?) ?? CobrancaStatus.pendente,
       pagoEm: pagoEm is Timestamp ? pagoEm.toDate() : null,
+      metodoPagamento: m['metodoPagamento'] as String?,
+      comprovanteUrl: m['comprovanteUrl'] as String?,
     );
   }
 

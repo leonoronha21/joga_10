@@ -67,6 +67,16 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
 
   Future<void> _carregarIniciais() async {
     final cadastrados = await _repo.listarComLocalizacao();
+    if (!mounted) return;
+    setState(() {
+      _locais = LocaisEsportivosCatalogo.mesclarSomente(cadastrados);
+      _carregando = false;
+    });
+    unawaited(_carregarRemotosIniciais());
+  }
+
+  Future<void> _carregarRemotosIniciais() async {
+    setState(() => _buscandoPlaces = true);
     final encontrados = await _places.buscarQuadrasRegiao(
       centro: _centroInicial,
       raioMetros: 50000,
@@ -74,10 +84,10 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
     if (!mounted) return;
     setState(() {
       _locais = LocaisEsportivosCatalogo.mesclarSomente([
-        ...cadastrados,
+        ..._locais,
         ...encontrados,
       ]);
-      _carregando = false;
+      _buscandoPlaces = false;
     });
   }
 

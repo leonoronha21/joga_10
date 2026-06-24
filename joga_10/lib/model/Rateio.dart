@@ -34,6 +34,8 @@ class RateioCobranca {
   final double valorTotal;
   final String status;
   final DateTime? pagoEm;
+  final String? metodoPagamento;
+  final String? comprovanteUrl;
 
   RateioCobranca({
     required this.id,
@@ -46,6 +48,8 @@ class RateioCobranca {
     required this.valorTotal,
     required this.status,
     this.pagoEm,
+    this.metodoPagamento,
+    this.comprovanteUrl,
   });
 
   bool get pago => status == CobrancaStatus.pago;
@@ -56,6 +60,10 @@ class RateioCobranca {
     String? status,
     DateTime? pagoEm,
     bool limparPagoEm = false,
+    String? metodoPagamento,
+    bool limparMetodoPagamento = false,
+    String? comprovanteUrl,
+    bool limparComprovante = false,
   }) {
     return RateioCobranca(
       id: id,
@@ -68,6 +76,11 @@ class RateioCobranca {
       valorTotal: valorTotal,
       status: status ?? this.status,
       pagoEm: limparPagoEm ? null : pagoEm ?? this.pagoEm,
+      metodoPagamento: limparMetodoPagamento
+          ? null
+          : metodoPagamento ?? this.metodoPagamento,
+      comprovanteUrl:
+          limparComprovante ? null : comprovanteUrl ?? this.comprovanteUrl,
     );
   }
 
@@ -85,6 +98,8 @@ class RateioCobranca {
       valorTotal: asDouble(row['valor_total']),
       status: (row['status'] as String?) ?? CobrancaStatus.pendente,
       pagoEm: row['pago_em'] as DateTime?,
+      metodoPagamento: row['metodo_pagamento'] as String?,
+      comprovanteUrl: row['comprovante_url'] as String?,
     );
   }
 }

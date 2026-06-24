@@ -146,7 +146,7 @@ public class MainActivity extends FlutterActivity {
                 .setMaxResultCount(20)
                 .build();
         placesClient.searchByText(request)
-                .addOnSuccessListener(response -> result.success(placesToMaps(response.getPlaces(), true)))
+                .addOnSuccessListener(response -> result.success(placesToMaps(response.getPlaces(), false)))
                 .addOnFailureListener(error -> result.error("PLACES_TEXT_ERROR", error.getMessage(), null));
     }
 

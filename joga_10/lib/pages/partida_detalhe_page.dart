@@ -605,10 +605,15 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
                 ),
               )
             else
-              const Icon(
-                Icons.sports_soccer,
-                size: 18,
-                color: AppColors.inkMuted,
+              Image.asset(
+                'lib/assets/img/futebol.png',
+                width: 18,
+                height: 18,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.sports_soccer,
+                  size: 18,
+                  color: AppColors.inkMuted,
+                ),
               ),
             const SizedBox(width: 8),
             Expanded(

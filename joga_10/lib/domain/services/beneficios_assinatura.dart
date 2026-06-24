@@ -1,7 +1,7 @@
 import 'package:joga_10/model/Monetizacao.dart';
 
 class BeneficiosAssinatura {
-  static const double taxaRateioFree = 2.5;
+  static const double taxaRateioFree = 0;
   static const double taxaRateioPro = 0;
 
   const BeneficiosAssinatura();
@@ -11,10 +11,10 @@ class BeneficiosAssinatura {
   }
 
   double taxaRateio(AssinaturaUsuario? assinatura) {
-    return assinaturaProAtiva(assinatura) ? taxaRateioPro : taxaRateioFree;
+    return 0;
   }
 
   bool podeAcessarCampeonatos(AssinaturaUsuario? assinatura) {
-    return assinaturaProAtiva(assinatura);
+    return true;
   }
 }

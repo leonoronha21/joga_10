@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS partida_rateio (
   id SERIAL PRIMARY KEY,
   partida_id INTEGER NOT NULL UNIQUE REFERENCES partida(id) ON DELETE CASCADE,
   valor_quadra NUMERIC(10,2) NOT NULL,
-  taxa_percentual NUMERIC(5,2) NOT NULL DEFAULT 2.5,
+  taxa_percentual NUMERIC(5,2) NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'ABERTO',
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -102,6 +102,8 @@ CREATE TABLE IF NOT EXISTS rateio_cobranca (
   valor_total NUMERIC(10,2) NOT NULL,
   status TEXT NOT NULL DEFAULT 'PENDENTE',
   pago_em TIMESTAMPTZ,
+  metodo_pagamento TEXT,
+  comprovante_url TEXT,
   criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (rateio_id, partida_membro_id)
@@ -346,7 +348,7 @@ SELECT setval(
 
 INSERT INTO plano_assinatura (codigo, nome, descricao, preco_mensal)
 VALUES
-  ('FREE', 'Joga10 Free', 'Partidas e convites, com taxa de 2,5% em cada rateio.', 0),
+  ('FREE', 'Joga10 Free', 'Partidas, convites e rateios liberados sem taxa.', 0),
   ('PRO', 'Joga10 Pro', 'Campeonatos e rateios sem taxa.', 14.90)
 ON CONFLICT (codigo) DO UPDATE SET
   nome = EXCLUDED.nome,

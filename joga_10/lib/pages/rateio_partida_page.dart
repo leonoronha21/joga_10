@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:joga_10/core/app_dependencies.dart';
+import 'package:joga_10/domain/contracts/media_storage_contract.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/sessao_contract.dart';
-import 'package:joga_10/domain/services/beneficios_assinatura.dart';
+import 'package:joga_10/model/Cartao.dart';
 import 'package:joga_10/model/Partida.dart';
 import 'package:joga_10/model/Rateio.dart';
+import 'package:joga_10/repositories/cartao_repository.dart';
 import 'package:joga_10/services/firestore_compat_ids.dart';
 import 'package:joga_10/theme/app_colors.dart';
 import 'package:joga_10/util/format.dart';
@@ -23,12 +26,14 @@ class RateioPartidaPage extends StatefulWidget {
 class _RateioPartidaPageState extends State<RateioPartidaPage> {
   late final MonetizacaoRepositoryContract _repo;
   late final SessaoContract _sessao;
+  final _cartaoRepo = CartaoRepository();
+  final _picker = ImagePicker();
   Future<PartidaRateio?>? _futuro;
   PartidaRateio? _rateioAtual;
   int? _usuarioId;
   bool _sessaoCarregada = false;
-  bool _assinaturaProAtiva = false;
   bool _salvando = false;
+  bool _processandoPagamento = false;
 
   bool get _souOrganizador {
     final uid = FirestoreCompatIds.usuarioUid;
@@ -51,13 +56,10 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
 
   Future<void> _carregarUsuario() async {
     final id = await _sessao.usuarioId;
-    final assinatura = id == null ? null : await _repo.buscarAssinatura(id);
     if (mounted) {
       setState(() {
         _usuarioId = id;
         _sessaoCarregada = true;
-        _assinaturaProAtiva =
-            const BeneficiosAssinatura().assinaturaProAtiva(assinatura);
       });
     }
   }
@@ -72,9 +74,6 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
       context: context,
       builder: (_) => _DialogConfigurarRateio(
         valorInicial: atual?.valorQuadra ?? widget.partida.preco,
-        taxaPercentual: _assinaturaProAtiva
-            ? BeneficiosAssinatura.taxaRateioPro
-            : BeneficiosAssinatura.taxaRateioFree,
       ),
     );
     if (resultado == null) return;
@@ -114,6 +113,14 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
                             ? DateTime.now()
                             : null,
                         limparPagoEm: status != CobrancaStatus.pago,
+                        metodoPagamento: status == CobrancaStatus.pago
+                            ? item.metodoPagamento
+                            : null,
+                        limparMetodoPagamento: status != CobrancaStatus.pago,
+                        comprovanteUrl: status == CobrancaStatus.pago
+                            ? item.comprovanteUrl
+                            : null,
+                        limparComprovante: status != CobrancaStatus.pago,
                       )
                     : item,
               )
@@ -123,6 +130,178 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
     } catch (_) {
       _msg('Nao foi possivel atualizar o pagamento.');
     }
+  }
+
+  Future<void> _confirmarPagamento(RateioCobranca cobranca) async {
+    if (_processandoPagamento) return;
+    final metodo = await _selecionarMetodoPagamento();
+    if (metodo == null || !mounted) return;
+    final anexarComprovante = await _perguntarComprovante();
+    if (!mounted) return;
+
+    setState(() => _processandoPagamento = true);
+    try {
+      final comprovanteUrl =
+          anexarComprovante ? await _anexarComprovante() : null;
+      await _repo.atualizarStatusCobranca(
+        cobranca.id,
+        CobrancaStatus.pago,
+        metodoPagamento: metodo.rotulo,
+        comprovanteUrl: comprovanteUrl,
+      );
+      if (!mounted) return;
+      final rateio = _rateioAtual;
+      if (rateio != null) {
+        setState(() {
+          _rateioAtual = rateio.copyWith(
+            cobrancas: rateio.cobrancas
+                .map(
+                  (item) => item.id == cobranca.id
+                      ? item.copyWith(
+                          status: CobrancaStatus.pago,
+                          pagoEm: DateTime.now(),
+                          metodoPagamento: metodo.rotulo,
+                          comprovanteUrl: comprovanteUrl,
+                        )
+                      : item,
+                )
+                .toList(),
+          );
+        });
+      }
+      _msg('Pagamento confirmado.');
+    } catch (_) {
+      _msg('Nao foi possivel confirmar o pagamento.');
+    } finally {
+      if (mounted) setState(() => _processandoPagamento = false);
+    }
+  }
+
+  Future<_MetodoPagamento?> _selecionarMetodoPagamento() async {
+    List<Cartao> cartoes = const [];
+    final usuarioId = _usuarioId;
+    if (usuarioId != null) {
+      try {
+        cartoes = await _cartaoRepo.listarPorUsuario(usuarioId);
+      } catch (_) {
+        cartoes = const [];
+      }
+    }
+    if (!mounted) return null;
+
+    return showModalBottomSheet<_MetodoPagamento>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Forma de pagamento',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: const Text('Google Pay / Google Play'),
+                subtitle: const Text('Confirmacao em ambiente de teste.'),
+                onTap: () => Navigator.pop(
+                  context,
+                  const _MetodoPagamento('Google Pay / Google Play'),
+                ),
+              ),
+              if (cartoes.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 6, bottom: 10),
+                  child: Text(
+                    'Nenhum cartao cadastrado. Use o Google Pay ou cadastre um cartao no perfil.',
+                    style: TextStyle(color: AppColors.inkMuted),
+                  ),
+                )
+              else
+                ...cartoes.map(
+                  (cartao) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.credit_card_outlined),
+                    title: Text('Cartao final ${cartao.ultimos4}'),
+                    subtitle: Text(
+                      [
+                        if ((cartao.bandeira ?? '').isNotEmpty)
+                          cartao.bandeira!,
+                        cartao.validade,
+                      ].join(' - '),
+                    ),
+                    onTap: () => Navigator.pop(
+                      context,
+                      _MetodoPagamento('Cartao final ${cartao.ultimos4}'),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _perguntarComprovante() async {
+    final resposta = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Comprovante',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.attach_file_outlined),
+                title: const Text('Anexar comprovante'),
+                subtitle: const Text('Escolha uma imagem da galeria.'),
+                onTap: () => Navigator.pop(context, true),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.check_circle_outline),
+                title: const Text('Confirmar sem comprovante'),
+                onTap: () => Navigator.pop(context, false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return resposta ?? false;
+  }
+
+  Future<String?> _anexarComprovante() async {
+    final midia = AppDependenciesScope.of(context).midia;
+    final proprietarioId =
+        FirestoreCompatIds.usuarioUid ?? _usuarioId?.toString() ?? 'usuario';
+    final arquivo = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 82,
+    );
+    if (arquivo == null) return null;
+    if (!midia.uploadsHabilitados) return arquivo.path;
+    final armazenado = await midia.enviar(
+      tipo: TipoMidia.documento,
+      proprietarioId: proprietarioId,
+      bytes: await arquivo.readAsBytes(),
+      contentType: 'image/jpeg',
+    );
+    return armazenado.url;
   }
 
   Future<void> _fecharRateio(PartidaRateio rateio) async {
@@ -146,32 +325,25 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
       appBar: AppBar(title: const Text('Rateio da partida')),
       body: !_sessaoCarregada
           ? const LoadingView()
-          : !_souOrganizador
-              ? const EmptyState(
-                  icone: Icons.lock_outline,
-                  titulo: 'Acesso restrito',
-                  mensagem:
-                      'Somente o criador da partida pode acessar e gerenciar o rateio.',
-                )
-              : FutureBuilder<PartidaRateio?>(
-                  future: _futuro!,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const LoadingView();
-                    }
-                    if (snapshot.hasError) {
-                      return const EmptyState(
-                        icone: Icons.cloud_off_outlined,
-                        titulo: 'Nao foi possivel carregar o rateio',
-                      );
-                    }
+          : FutureBuilder<PartidaRateio?>(
+              future: _futuro!,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const LoadingView();
+                }
+                if (snapshot.hasError) {
+                  return const EmptyState(
+                    icone: Icons.cloud_off_outlined,
+                    titulo: 'Nao foi possivel carregar o rateio',
+                  );
+                }
 
-                    final rateio = _rateioAtual ?? snapshot.data;
-                    _rateioAtual ??= rateio;
-                    if (rateio == null) return _semRateio();
-                    return _conteudo(rateio);
-                  },
-                ),
+                final rateio = _rateioAtual ?? snapshot.data;
+                _rateioAtual ??= rateio;
+                if (rateio == null) return _semRateio();
+                return _conteudo(rateio);
+              },
+            ),
     );
   }
 
@@ -222,7 +394,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Pagamento em modo local. Nenhum valor real sera movimentado.',
+                  'Plataforma liberada: sem taxa Joga10 e sem cobranca real neste momento.',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -255,7 +427,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
               ),
               const SizedBox(height: 16),
               _linhaResumo('Valor da quadra', rateio.valorQuadra),
-              _linhaResumo('Taxa Joga10', rateio.totalTaxas),
+              _linhaResumo('Taxa Joga10 liberada', rateio.totalTaxas),
               _linhaResumo('Total do rateio', rateio.totalCobrado,
                   destaque: true),
               const Divider(height: 24),
@@ -325,14 +497,76 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
           ),
           const SizedBox(height: 12),
           _linhaResumo('Quadra', cobranca.valorQuadra),
-          _linhaResumo('Taxa do servico', cobranca.taxaServico),
+          _linhaResumo('Taxa Joga10 liberada', cobranca.taxaServico),
           _linhaResumo('Total', cobranca.valorTotal, destaque: true),
+          if (cobranca.quitado) ...[
+            const SizedBox(height: 10),
+            _detalhesPagamento(cobranca),
+          ],
           if (!cobranca.quitado) ...[
             const SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: () => _alterarStatus(cobranca, CobrancaStatus.pago),
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Simular pagamento'),
+              onPressed: _processandoPagamento
+                  ? null
+                  : () => _confirmarPagamento(cobranca),
+              icon: _processandoPagamento
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.payments_outlined),
+              label: Text(
+                _processandoPagamento
+                    ? 'Confirmando...'
+                    : 'Pagar / anexar comprovante',
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _detalhesPagamento(RateioCobranca cobranca) {
+    final metodo = cobranca.metodoPagamento;
+    final temComprovante = (cobranca.comprovanteUrl ?? '').isNotEmpty;
+    if ((metodo ?? '').isEmpty && !temComprovante) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if ((metodo ?? '').isNotEmpty)
+            Row(
+              children: [
+                const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 16,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(metodo!)),
+              ],
+            ),
+          if (temComprovante) ...[
+            if ((metodo ?? '').isNotEmpty) const SizedBox(height: 6),
+            const Row(
+              children: [
+                Icon(
+                  Icons.attach_file_outlined,
+                  size: 16,
+                  color: AppColors.success,
+                ),
+                SizedBox(width: 8),
+                Expanded(child: Text('Comprovante anexado')),
+              ],
             ),
           ],
         ],
@@ -346,6 +580,10 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
         : cobranca.isento
             ? AppColors.info
             : AppColors.warning;
+    final descricao = cobranca.taxaServico == 0
+        ? formatarMoeda(cobranca.valorQuadra)
+        : '${formatarMoeda(cobranca.valorQuadra)} + '
+            '${formatarMoeda(cobranca.taxaServico)} taxa';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
@@ -370,7 +608,7 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   Text(
-                    '${formatarMoeda(cobranca.valorQuadra)} + ${formatarMoeda(cobranca.taxaServico)} taxa',
+                    descricao,
                     style: const TextStyle(
                       color: AppColors.inkMuted,
                       fontSize: 12,
@@ -380,6 +618,23 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
                     formatarMoeda(cobranca.valorTotal),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
+                  if ((cobranca.metodoPagamento ?? '').isNotEmpty)
+                    Text(
+                      cobranca.metodoPagamento!,
+                      style: const TextStyle(
+                        color: AppColors.inkMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  if ((cobranca.comprovanteUrl ?? '').isNotEmpty)
+                    const Text(
+                      'Comprovante anexado',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -474,13 +729,17 @@ class _ConfiguracaoRateio {
   });
 }
 
+class _MetodoPagamento {
+  final String rotulo;
+
+  const _MetodoPagamento(this.rotulo);
+}
+
 class _DialogConfigurarRateio extends StatefulWidget {
   final double valorInicial;
-  final double taxaPercentual;
 
   const _DialogConfigurarRateio({
     required this.valorInicial,
-    required this.taxaPercentual,
   });
 
   @override
@@ -526,29 +785,17 @@ class _DialogConfigurarRateioState extends State<_DialogConfigurarRateio> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: (widget.taxaPercentual == 0
-                        ? AppColors.success
-                        : AppColors.info)
-                    .withValues(alpha: 0.10),
+                color: AppColors.success.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  Icon(
-                    widget.taxaPercentual == 0
-                        ? Icons.workspace_premium_outlined
-                        : Icons.percent,
-                    color: widget.taxaPercentual == 0
-                        ? AppColors.success
-                        : AppColors.info,
-                  ),
-                  const SizedBox(width: 10),
+                  Icon(Icons.money_off_outlined, color: AppColors.success),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      widget.taxaPercentual == 0
-                          ? 'Assinante Pro: rateio sem taxa.'
-                          : 'Plano Free: taxa de 2,5% sobre o rateio.',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      'Rateio sem taxa enquanto a plataforma estiver liberada.',
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],

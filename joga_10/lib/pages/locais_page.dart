@@ -65,18 +65,13 @@ class _LocaisPageState extends State<LocaisPage> {
       _erro = false;
     });
     try {
-      final resultados = await Future.wait([
-        _repo.listarComLocalizacao(),
-        _places.buscarQuadrasRegiao(centro: _centroRegiao),
-      ]);
+      final cadastrados = await _repo.listarComLocalizacao();
       if (!mounted) return;
       setState(() {
-        _quadras = LocaisEsportivosCatalogo.mesclarSomente([
-          ...resultados[0],
-          ...resultados[1],
-        ]);
+        _quadras = LocaisEsportivosCatalogo.mesclarSomente(cadastrados);
         _carregando = false;
       });
+      unawaited(_carregarRemotosIniciais());
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -84,6 +79,26 @@ class _LocaisPageState extends State<LocaisPage> {
         _erro = true;
       });
     }
+  }
+
+  Future<void> _carregarRemotosIniciais() async {
+    setState(() => _buscando = true);
+    final encontrados = await _places.buscarQuadrasRegiao(
+      centro: _centroRegiao,
+      raioMetros: 50000,
+    );
+    if (!mounted) return;
+    if (_termo.trim().isNotEmpty) {
+      setState(() => _buscando = false);
+      return;
+    }
+    setState(() {
+      _quadras = LocaisEsportivosCatalogo.mesclarSomente([
+        ..._quadras,
+        ...encontrados,
+      ]);
+      _buscando = false;
+    });
   }
 
   void _aoBuscar() {
