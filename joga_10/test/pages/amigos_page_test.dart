@@ -35,5 +35,13 @@ void main() {
 
     expect(find.text('Buscar perfis existentes no Joga10'), findsOneWidget);
     expect(find.text('Adicionar'), findsWidgets);
+
+    final adicionar = find.text('Adicionar').first;
+    await tester.ensureVisible(adicionar);
+    await tester.pumpAndSettle();
+    await tester.tap(adicionar);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pendente'), findsOneWidget);
   });
 }

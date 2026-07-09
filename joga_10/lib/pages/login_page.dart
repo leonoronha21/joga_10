@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:joga_10/config/build_config.dart';
 import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/pages/cadastro_page.dart';
 import 'package:joga_10/pages/esqueci_senha_page.dart';
@@ -30,6 +31,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _entrar() async {
+    if (!BuildConfig.localAuthEnabled) {
+      _msg('Entre com Google para acessar o app.');
+      return;
+    }
     final login = _email.text.trim().toLowerCase();
     final senha = _senha.text;
 
@@ -109,6 +114,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final redirectId = widget.redirectPartidaId;
+    const localAuthEnabled = BuildConfig.localAuthEnabled;
     return Scaffold(
       body: Column(
         children: [
@@ -158,73 +164,76 @@ class _LoginPageState extends State<LoginPage> {
                     style: const TextStyle(color: AppColors.inkMuted),
                   ),
                   const SizedBox(height: 24),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Email ou usuario',
-                      prefixIcon: Icon(Icons.mail_outline),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _senha,
-                    obscureText: _obscure,
-                    onSubmitted: (_) => _entrar(),
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                  if (localAuthEnabled) ...[
+                    TextField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Email ou usuario',
+                        prefixIcon: Icon(Icons.mail_outline),
                       ),
                     ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EsqueciSenhaPage(),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _senha,
+                      obscureText: _obscure,
+                      onSubmitted: (_) => _entrar(),
+                      decoration: InputDecoration(
+                        labelText: 'Senha',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
-                      child: const Text('Esqueci minha senha'),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _entrar,
-                    child: _loading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.4,
-                            ),
-                          )
-                        : const Text('ENTRAR'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _loading
-                        ? null
-                        : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CadastroPage(
-                                  redirectPartidaId: redirectId,
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const EsqueciSenhaPage(),
+                          ),
+                        ),
+                        child: const Text('Esqueci minha senha'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: _loading ? null : _entrar,
+                      child: _loading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.4,
+                              ),
+                            )
+                          : const Text('ENTRAR'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: _loading
+                          ? null
+                          : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CadastroPage(
+                                    redirectPartidaId: redirectId,
+                                  ),
                                 ),
                               ),
-                            ),
-                    child: const Text('Criar conta'),
-                  ),
+                      child: const Text('Criar conta'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _loading ? null : _entrarComGoogle,

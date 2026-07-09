@@ -249,6 +249,9 @@ class AmizadeRepository {
   }
 
   Future<void> enviarPedido(int meuId, int outroId) async {
+    if (meuId == outroId) {
+      throw StateError('Voce nao pode adicionar seu proprio perfil.');
+    }
     if (FirestoreCompatIds.habilitado) {
       final uid = FirestoreCompatIds.usuarioUid;
       if (uid == null) {
@@ -260,16 +263,18 @@ class AmizadeRepository {
       }
       final ref = _firestore.collection('amizades').doc(_pairId(uid, outroUid));
       final existente = await ref.get();
-      final statusAtual = existente.data()?['status'] as String?;
+      final dadosExistentes = existente.data();
+      final statusAtual = dadosExistentes?['status'] as String?;
       if (statusAtual == 'ACEITO') return;
+      final usuarios = _usuariosAmizade(dadosExistentes, uid, outroUid);
       await ref.set({
         'solicitanteId': uid,
         'destinatarioId': outroUid,
-        'usuarios': existente.data()?['usuarios'] ?? [uid, outroUid],
+        'usuarios': usuarios,
         'status': 'PENDENTE',
         'criadoEm': FieldValue.serverTimestamp(),
         'atualizadoEm': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: existente.exists));
+      }, SetOptions(merge: true));
       return;
     }
     if (meuId == LocalDemoData.adminId) {
@@ -279,10 +284,36 @@ class AmizadeRepository {
     final conn = await _conn;
     await conn.execute(
       Sql.named('''
+        WITH existente AS (
+          SELECT id, status
+          FROM amizade
+          WHERE (solicitante_id = @me AND destinatario_id = @outro)
+             OR (solicitante_id = @outro AND destinatario_id = @me)
+          ORDER BY CASE WHEN solicitante_id = @me THEN 0 ELSE 1 END
+          LIMIT 1
+        ), atualizada AS (
+          UPDATE amizade
+          SET solicitante_id = @me,
+              destinatario_id = @outro,
+              status = 'PENDENTE',
+              criado_em = now()
+          WHERE id IN (
+            SELECT id FROM existente WHERE status <> 'ACEITO'
+          )
+          RETURNING id
+        )
         INSERT INTO amizade (solicitante_id, destinatario_id, status)
-        VALUES (@me, @outro, 'PENDENTE')
+        SELECT @me, @outro, 'PENDENTE'
+        WHERE NOT EXISTS (SELECT 1 FROM existente)
         ON CONFLICT (solicitante_id, destinatario_id)
-        DO UPDATE SET status = 'PENDENTE'
+        DO UPDATE SET status = CASE
+          WHEN amizade.status = 'ACEITO' THEN amizade.status
+          ELSE 'PENDENTE'
+        END,
+        criado_em = CASE
+          WHEN amizade.status = 'ACEITO' THEN amizade.criado_em
+          ELSE now()
+        END
       '''),
       parameters: {'me': meuId, 'outro': outroId},
     );
@@ -293,7 +324,10 @@ class AmizadeRepository {
     if (FirestoreCompatIds.habilitado) {
       final doc = await _amizadeDoc(amizadeId);
       if (doc == null) return;
-      await doc.reference.update({'status': status});
+      await doc.reference.update({
+        'status': status,
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      });
       return;
     }
     if (amizadeId < 0) {
@@ -318,6 +352,22 @@ class AmizadeRepository {
 
   String _pairId(String a, String b) =>
       a.compareTo(b) <= 0 ? '${a}_$b' : '${b}_$a';
+
+  List<String> _usuariosAmizade(
+    Map<String, dynamic>? dadosExistentes,
+    String uid,
+    String outroUid,
+  ) {
+    final usuariosAtuais = (dadosExistentes?['usuarios'] as List?)
+        ?.whereType<String>()
+        .toList(growable: false);
+    if (usuariosAtuais != null &&
+        usuariosAtuais.contains(uid) &&
+        usuariosAtuais.contains(outroUid)) {
+      return usuariosAtuais;
+    }
+    return [uid, outroUid];
+  }
 
   Usuario _usuarioDeDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final m = doc.data() ?? const {};

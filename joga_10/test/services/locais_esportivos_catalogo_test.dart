@@ -4,28 +4,34 @@ import 'package:joga_10/services/locais_esportivos_catalogo.dart';
 
 void main() {
   group('LocaisEsportivosCatalogo', () {
-    test('inclui locais de Porto Alegre, Canoas e regiao', () {
-      final cidades =
-          LocaisEsportivosCatalogo.locais.map((local) => local.cidade).toSet();
-
-      expect(cidades, containsAll(['Porto Alegre', 'Canoas', 'São Leopoldo']));
-      expect(LocaisEsportivosCatalogo.locais.length, greaterThanOrEqualTo(10));
-      expect(
-        LocaisEsportivosCatalogo.locais.every((local) => local.temLocalizacao),
-        isTrue,
-      );
+    test('nao adiciona locais fixos ao mapa', () {
+      expect(LocaisEsportivosCatalogo.locais, isEmpty);
+      expect(LocaisEsportivosCatalogo.mesclar(const []), isEmpty);
     });
 
     test('busca ignora acentos e pesquisa cidade, bairro e nome', () {
-      final locais = LocaisEsportivosCatalogo.locais;
+      final locais = [
+        Estabelecimentos(
+          id: 1,
+          nome: 'Sesc Protasio Alves',
+          cidade: 'Porto Alegre',
+          bairro: 'Jardim Sabara',
+          latitude: -30.04,
+          longitude: -51.14,
+        ),
+        Estabelecimentos(
+          id: 2,
+          nome: 'Quadra da Igreja',
+          cidade: 'Gravatai',
+          bairro: 'Parque dos Anjos',
+          latitude: -29.94,
+          longitude: -50.97,
+        ),
+      ];
 
       expect(
-        LocaisEsportivosCatalogo.filtrar(locais, 'protasio').single.nome,
-        'Sesc Protásio Alves',
-      );
-      expect(
-        LocaisEsportivosCatalogo.filtrar(locais, 'canoas').length,
-        greaterThanOrEqualTo(4),
+        LocaisEsportivosCatalogo.filtrar(locais, 'prot\u00e1sio').single.nome,
+        'Sesc Protasio Alves',
       );
       expect(
         LocaisEsportivosCatalogo.filtrar(locais, 'parque dos anjos')
@@ -35,7 +41,7 @@ void main() {
       );
     });
 
-    test('cadastro existente ganha prioridade sobre item do catalogo', () {
+    test('cadastro existente e resultado remoto nao se repetem por nome', () {
       final cadastrado = Estabelecimentos(
         id: 99,
         nome: 'Parque Esportivo PUCRS',
@@ -43,12 +49,21 @@ void main() {
         latitude: -30,
         longitude: -51,
       );
+      final remotoDuplicado = Estabelecimentos(
+        id: -1,
+        nome: 'Parque Esportivo PUCRS',
+        cidade: 'Porto Alegre',
+        latitude: -30.0546677,
+        longitude: -51.1713178,
+        placeId: 'places-pucrs',
+      );
 
-      final resultado = LocaisEsportivosCatalogo.mesclar([cadastrado]);
-      final pucrs =
-          resultado.where((local) => local.nome == 'Parque Esportivo PUCRS');
+      final resultado = LocaisEsportivosCatalogo.mesclarSomente([
+        cadastrado,
+        remotoDuplicado,
+      ]);
 
-      expect(pucrs.single.id, 99);
+      expect(resultado.single.id, 99);
     });
 
     test('nao repete marcador quando a coordenada ja esta cadastrada', () {
@@ -59,15 +74,21 @@ void main() {
         latitude: -30.0577,
         longitude: -51.2370,
       );
-
-      final resultado = LocaisEsportivosCatalogo.mesclar([cadastrado]);
-      final naCoordenada = resultado.where(
-        (local) =>
-            local.latitude == cadastrado.latitude &&
-            local.longitude == cadastrado.longitude,
+      final remotoDuplicado = Estabelecimentos(
+        id: -2,
+        nome: 'Outro nome',
+        cidade: 'Porto Alegre',
+        latitude: -30.057704,
+        longitude: -51.236996,
+        placeId: 'places-coord',
       );
 
-      expect(naCoordenada.single.id, 100);
+      final resultado = LocaisEsportivosCatalogo.mesclarSomente([
+        cadastrado,
+        remotoDuplicado,
+      ]);
+
+      expect(resultado.single.id, 100);
     });
   });
 }

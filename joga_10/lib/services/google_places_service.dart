@@ -25,18 +25,23 @@ class GooglePlacesService {
 
   Future<List<Estabelecimentos>> buscarTexto({
     required String termo,
-    required LatLng centro,
+    LatLng? centro,
     double raioMetros = 30000,
   }) {
     if (termo.trim().isEmpty) {
+      if (centro == null) return Future.value(const <Estabelecimentos>[]);
       return buscarProximos(centro: centro, raioMetros: raioMetros);
     }
-    return _buscar('searchByText', {
+    final argumentos = <String, Object>{
       'query': termo.trim(),
-      'latitude': centro.latitude,
-      'longitude': centro.longitude,
       'radius': raioMetros.clamp(1000, 50000),
-    });
+    };
+    if (centro != null) {
+      argumentos
+        ..['latitude'] = centro.latitude
+        ..['longitude'] = centro.longitude;
+    }
+    return _buscar('searchByText', argumentos);
   }
 
   Future<List<Estabelecimentos>> buscarTextoEsportivo({
@@ -50,20 +55,18 @@ class GooglePlacesService {
     }
     final consultas = <String>{
       termoLimpo,
+      '$termoLimpo quadra',
       '$termoLimpo quadra esportiva',
       '$termoLimpo futebol society',
-      '$termoLimpo Porto Alegre',
+      '$termoLimpo ginasio esportivo',
     };
-    final resultados = await Future.wait(
-      consultas.map(
-        (consulta) => buscarTexto(
-          termo: consulta,
-          centro: centro,
-          raioMetros: raioMetros,
-        ),
-      ),
+    final resultadosComArea = await _buscarConsultasTexto(
+      consultas,
+      centro: centro,
+      raioMetros: raioMetros,
     );
-    return _mesclarUnicos(resultados.expand((lista) => lista));
+    if (resultadosComArea.isNotEmpty) return resultadosComArea;
+    return _buscarConsultasTexto(consultas, raioMetros: raioMetros);
   }
 
   Future<List<Estabelecimentos>> buscarQuadrasRegiao({
@@ -99,6 +102,23 @@ class GooglePlacesService {
       unicos[chave] = local;
     }
     return unicos.values.toList();
+  }
+
+  Future<List<Estabelecimentos>> _buscarConsultasTexto(
+    Iterable<String> consultas, {
+    LatLng? centro,
+    double raioMetros = 50000,
+  }) async {
+    final resultados = await Future.wait(
+      consultas.map(
+        (consulta) => buscarTexto(
+          termo: consulta,
+          centro: centro,
+          raioMetros: raioMetros,
+        ),
+      ),
+    );
+    return _mesclarUnicos(resultados.expand((lista) => lista));
   }
 
   Future<Estabelecimentos?> buscarDetalhes(Estabelecimentos local) async {

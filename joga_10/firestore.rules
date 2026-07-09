@@ -17,6 +17,20 @@ service cloud.firestore {
       ]);
     }
 
+    function validPrivateProfile() {
+      return request.resource.data.keys().hasOnly([
+        'firebaseUid', 'primeiroNome', 'segundoNome', 'nomeCompleto',
+        'email', 'fotoUrlGoogle', 'fotoUrl', 'role', 'provedor',
+        'ambiente', 'ativo', 'conviteContatoKey', 'cep', 'cidade',
+        'bairro', 'rua', 'numero', 'complemento', 'contato',
+        'fotoVerificada', 'faceMatchScore', 'verificadoEm',
+        'criadoEm', 'atualizadoEm'
+      ])
+      && request.resource.data.firebaseUid == request.auth.uid
+      && (!('role' in request.resource.data)
+        || request.resource.data.role == 'USER');
+    }
+
     function validCard() {
       return request.resource.data.keys().hasOnly([
         'nomeTitular', 'bandeira', 'ultimos4', 'validade', 'criadoEm'
@@ -70,7 +84,7 @@ service cloud.firestore {
       allow read: if signedIn() && request.auth.uid == userId;
       allow create, update: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.firebaseUid == request.auth.uid;
+        && validPrivateProfile();
       allow delete: if false;
     }
 
@@ -262,6 +276,7 @@ service cloud.firestore {
         && request.auth.uid in resource.data.usuarios;
       allow create: if signedIn()
         && request.resource.data.solicitanteId == request.auth.uid
+        && request.resource.data.destinatarioId != request.auth.uid
         && request.resource.data.status == 'PENDENTE'
         && request.resource.data.usuarios.size() == 2
         && request.resource.data.usuarios.hasAll([
@@ -272,7 +287,7 @@ service cloud.firestore {
         && request.auth.uid in resource.data.usuarios
         && (
           (
-            changedOnly(['status', 'criadoEm'])
+            changedOnly(['status', 'criadoEm', 'atualizadoEm'])
             && (
               (request.auth.uid == resource.data.destinatarioId
                 && request.resource.data.status in ['ACEITO', 'RECUSADO'])
@@ -283,13 +298,17 @@ service cloud.firestore {
           || (
             changedOnly([
               'solicitanteId', 'destinatarioId', 'status',
-              'criadoEm', 'atualizadoEm'
+              'usuarios', 'criadoEm', 'atualizadoEm'
             ])
             && request.resource.data.status == 'PENDENTE'
             && request.resource.data.solicitanteId == request.auth.uid
             && request.resource.data.destinatarioId in resource.data.usuarios
             && request.resource.data.destinatarioId != request.auth.uid
-            && request.resource.data.usuarios == resource.data.usuarios
+            && request.resource.data.usuarios.size() == 2
+            && request.resource.data.usuarios.hasAll([
+              request.resource.data.solicitanteId,
+              request.resource.data.destinatarioId
+            ])
           )
         );
       allow delete: if false;

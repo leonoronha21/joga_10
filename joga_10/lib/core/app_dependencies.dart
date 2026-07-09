@@ -6,6 +6,7 @@ import 'package:joga_10/application/use_cases/autenticar_usuario.dart';
 import 'package:joga_10/application/use_cases/cadastrar_usuario.dart';
 import 'package:joga_10/application/use_cases/participar_da_partida.dart';
 import 'package:joga_10/application/use_cases/restaurar_sessao.dart';
+import 'package:joga_10/config/build_config.dart';
 import 'package:joga_10/domain/contracts/autenticacao_firebase_contract.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
 import 'package:joga_10/domain/contracts/media_storage_contract.dart';
@@ -21,6 +22,7 @@ import 'package:joga_10/services/partida_convite_service.dart';
 import 'package:joga_10/services/autenticacao_firebase_service.dart';
 import 'package:joga_10/services/firebase_media_storage.dart';
 import 'package:joga_10/services/pagamento_demo_provider.dart';
+import 'package:joga_10/services/pagamento_registro_manual_provider.dart';
 import 'package:joga_10/services/sessao.dart';
 
 class AppDependencies {
@@ -57,7 +59,9 @@ class AppDependencies {
     final autenticacaoFirebase = AutenticacaoFirebaseService();
     final partidas = PartidaRepository();
     final midia = FirebaseMediaStorage();
-    const pagamentos = PagamentoDemoProvider();
+    const pagamentos = BuildConfig.demoPaymentsEnabled
+        ? PagamentoDemoProvider()
+        : PagamentoRegistroManualProvider();
     final monetizacao = MonetizacaoRepository(pagamentos: pagamentos);
     final sessao = Sessao();
     final convites = PartidaConviteService();
@@ -73,8 +77,8 @@ class AppDependencies {
       convites: convites,
       autenticarUsuario: AutenticarUsuario(
         autenticadores: [
-          const AutenticadorAdminLocal(),
-          AutenticadorRepositorio(usuarios),
+          if (BuildConfig.localAuthEnabled) const AutenticadorAdminLocal(),
+          if (BuildConfig.localAuthEnabled) AutenticadorRepositorio(usuarios),
         ],
         sessao: sessao,
       ),

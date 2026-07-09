@@ -139,12 +139,15 @@ public class MainActivity extends FlutterActivity {
             searchNearby(call, result);
             return;
         }
-        SearchByTextRequest request = SearchByTextRequest
+        SearchByTextRequest.Builder builder = SearchByTextRequest
                 .builder(query.trim(), SEARCH_FIELDS)
-                .setLocationBias(areaFrom(call))
                 .setRegionCode("BR")
-                .setMaxResultCount(20)
-                .build();
+                .setMaxResultCount(20);
+        CircularBounds area = optionalAreaFrom(call);
+        if (area != null) {
+            builder.setLocationBias(area);
+        }
+        SearchByTextRequest request = builder.build();
         placesClient.searchByText(request)
                 .addOnSuccessListener(response -> result.success(placesToMaps(response.getPlaces(), false)))
                 .addOnFailureListener(error -> result.error("PLACES_TEXT_ERROR", error.getMessage(), null));
@@ -171,6 +174,15 @@ public class MainActivity extends FlutterActivity {
         double radiusMeters = radius == null ? 30000 : radius.doubleValue();
         radiusMeters = Math.max(1000, Math.min(50000, radiusMeters));
         return CircularBounds.newInstance(new LatLng(lat, lng), radiusMeters);
+    }
+
+    private CircularBounds optionalAreaFrom(MethodCall call) {
+        Number latitude = call.argument("latitude");
+        Number longitude = call.argument("longitude");
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+        return areaFrom(call);
     }
 
     private List<Map<String, Object>> placesToMaps(List<Place> places, boolean filterSports) {

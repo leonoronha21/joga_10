@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pay/pay.dart';
 
+import 'package:joga_10/config/build_config.dart';
 import 'package:joga_10/config/google_pay_config.dart';
 import 'package:joga_10/model/Cartao.dart';
 import 'package:joga_10/pages/cadastro_cartao_page.dart';
@@ -48,20 +49,29 @@ class _CartoesPageState extends State<CartoesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Meus cartões')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _adicionar,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Adicionar'),
-      ),
-      body: Column(
-        children: [
-          _secaoGooglePay(),
-          const Divider(height: 1),
-          Expanded(child: _lista()),
-        ],
-      ),
+      floatingActionButton: BuildConfig.manualCardsEnabled
+          ? FloatingActionButton.extended(
+              onPressed: _adicionar,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar'),
+            )
+          : null,
+      body: BuildConfig.demoPaymentsEnabled
+          ? Column(
+              children: [
+                _secaoGooglePay(),
+                const Divider(height: 1),
+                Expanded(child: _lista()),
+              ],
+            )
+          : const EmptyState(
+              icone: Icons.account_balance_wallet_outlined,
+              titulo: 'Pagamentos pelo app indisponíveis',
+              mensagem:
+                  'Use o rateio para registrar pagamentos externos e comprovantes.',
+            ),
     );
   }
 
@@ -78,10 +88,12 @@ class _CartoesPageState extends State<CartoesPage> {
             icone: Icons.credit_card,
             titulo: 'Nenhum cartão',
             mensagem: 'Adicione um cartão para agilizar os pagamentos.',
-            acao: ElevatedButton(
-              onPressed: _adicionar,
-              child: const Text('Adicionar cartão'),
-            ),
+            acao: BuildConfig.manualCardsEnabled
+                ? ElevatedButton(
+                    onPressed: _adicionar,
+                    child: const Text('Adicionar cartão'),
+                  )
+                : null,
           );
         }
         return ListView.separated(
@@ -134,8 +146,7 @@ class _CartoesPageState extends State<CartoesPage> {
                 child: CircularProgressIndicator(strokeWidth: 2.4),
               ),
             ),
-            onError: (_) =>
-                _msg('Google Pay indisponível neste dispositivo.'),
+            onError: (_) => _msg('Google Pay indisponível neste dispositivo.'),
           ),
         ],
       ),

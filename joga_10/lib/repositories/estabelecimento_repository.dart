@@ -58,18 +58,16 @@ class EstabelecimentoRepository {
   Future<List<Estabelecimentos>> listarComLocalizacao() async {
     if (FirestoreCompatIds.habilitado) {
       final cadastrados = await _listarFirestore(apenasComLocalizacao: true);
-      return LocaisEsportivosCatalogo.mesclar(cadastrados);
+      return LocaisEsportivosCatalogo.mesclarSomente(cadastrados);
     }
     if (Sessao.instance.isAdminLocal) {
-      return LocaisEsportivosCatalogo.mesclar(
-        LocalDemoData.instance.estabelecimentos,
-      );
+      return const <Estabelecimentos>[];
     }
     final conn = await _conn;
     final result = await conn.execute(
       'SELECT * FROM estabelecimento WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY nome',
     );
-    return LocaisEsportivosCatalogo.mesclar(
+    return LocaisEsportivosCatalogo.mesclarSomente(
       result.map((r) => Estabelecimentos.fromRow(r.toColumnMap())),
     );
   }

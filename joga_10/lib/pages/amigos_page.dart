@@ -25,6 +25,7 @@ class _AmigosPageState extends State<AmigosPage> {
   List<PedidoAmizade> _pedidos = [];
   List<Usuario> _amigos = [];
   List<UsuarioBusca> _resultados = [];
+  final Set<int> _enviandoPedidos = {};
   bool _carregando = true;
   bool _buscando = false;
   bool _encontrarPessoas = false;
@@ -78,11 +79,13 @@ class _AmigosPageState extends State<AmigosPage> {
   }
 
   Future<void> _enviar(int outroId) async {
+    if (_enviandoPedidos.contains(outroId)) return;
     final meuId = _meuId;
     if (meuId == null) {
       _msg('Entre na sua conta para adicionar amigos.');
       return;
     }
+    setState(() => _enviandoPedidos.add(outroId));
     try {
       await _repo.enviarPedido(meuId, outroId);
       if (!mounted) return;
@@ -92,12 +95,24 @@ class _AmigosPageState extends State<AmigosPage> {
       _msg(erro.message);
     } catch (_) {
       _msg('Nao foi possivel enviar a solicitacao.');
+    } finally {
+      if (mounted) {
+        setState(() => _enviandoPedidos.remove(outroId));
+      }
     }
   }
 
   Future<void> _responder(int amizadeId, bool aceitar) async {
-    await _repo.responder(amizadeId, aceitar);
-    await _recarregar();
+    try {
+      await _repo.responder(amizadeId, aceitar);
+      if (!mounted) return;
+      _msg(aceitar ? 'Solicitacao aceita.' : 'Solicitacao recusada.');
+      await _recarregar();
+    } on StateError catch (erro) {
+      _msg(erro.message);
+    } catch (_) {
+      _msg('Nao foi possivel responder a solicitacao.');
+    }
   }
 
   bool get _pesquisando => _busca.text.trim().isNotEmpty;
@@ -334,16 +349,23 @@ class _AmigosPageState extends State<AmigosPage> {
         break;
       case StatusAmizade.pendenteRecebido:
         acao = ElevatedButton(
-          onPressed: () =>
-              u.amizadeId != null ? _responder(u.amizadeId!, true) : null,
+          onPressed:
+              u.amizadeId == null ? null : () => _responder(u.amizadeId!, true),
           child: const Text('Aceitar'),
         );
         break;
       case StatusAmizade.nenhuma:
+        final enviando = _enviandoPedidos.contains(u.id);
         acao = OutlinedButton.icon(
-          onPressed: () => _enviar(u.id),
-          icon: const Icon(Icons.person_add_alt, size: 18),
-          label: const Text('Adicionar'),
+          onPressed: enviando ? null : () => _enviar(u.id),
+          icon: enviando
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.person_add_alt, size: 18),
+          label: Text(enviando ? 'Enviando' : 'Adicionar'),
         );
         break;
     }

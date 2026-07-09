@@ -115,6 +115,8 @@ class _PartidaDetalhePageState extends State<PartidaDetalhePage> {
       });
       _msg(mensagem);
       _recarregar();
+    } on StateError catch (erro) {
+      _msg(erro.message);
     } catch (_) {
       _msg('Nao foi possivel entrar na partida.');
     }

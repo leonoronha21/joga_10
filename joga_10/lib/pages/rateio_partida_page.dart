@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:joga_10/config/build_config.dart';
 import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/domain/contracts/media_storage_contract.dart';
 import 'package:joga_10/domain/contracts/monetizacao_repository_contract.dart';
@@ -178,6 +179,41 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
   }
 
   Future<_MetodoPagamento?> _selecionarMetodoPagamento() async {
+    if (!BuildConfig.demoPaymentsEnabled) {
+      return showModalBottomSheet<_MetodoPagamento>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Pagamento externo',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: const Text('Registrar comprovante'),
+                  subtitle: const Text(
+                    'Use para pagamentos combinados fora do app.',
+                  ),
+                  onTap: () => Navigator.pop(
+                    context,
+                    const _MetodoPagamento('Pagamento externo'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     List<Cartao> cartoes = const [];
     final usuarioId = _usuarioId;
     if (usuarioId != null) {
@@ -388,14 +424,21 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
             ),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.science_outlined, color: AppColors.warning),
-              SizedBox(width: 10),
+              Icon(
+                BuildConfig.demoPaymentsEnabled
+                    ? Icons.science_outlined
+                    : Icons.receipt_long_outlined,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Plataforma liberada: sem taxa Joga10 e sem cobranca real neste momento.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  BuildConfig.demoPaymentsEnabled
+                      ? 'Plataforma liberada: sem taxa Joga10 e sem cobranca real neste momento.'
+                      : 'Pagamentos pelo app estao pausados. Registre apenas pagamentos externos e comprovantes.',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -519,7 +562,9 @@ class _RateioPartidaPageState extends State<RateioPartidaPage> {
               label: Text(
                 _processandoPagamento
                     ? 'Confirmando...'
-                    : 'Pagar / anexar comprovante',
+                    : BuildConfig.demoPaymentsEnabled
+                        ? 'Pagar / anexar comprovante'
+                        : 'Registrar comprovante',
               ),
             ),
           ],

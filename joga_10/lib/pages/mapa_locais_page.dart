@@ -224,34 +224,28 @@ class _MapaLocaisPageState extends State<MapaLocaisPage> {
           : AppBar(title: const Text('Locais esportivos')),
       body: _carregando
           ? const LoadingView()
-          : _locais.isEmpty
-              ? const EmptyState(
-                  icone: Icons.map_outlined,
-                  titulo: 'Nenhum local esportivo encontrado',
-                  mensagem: 'Mova o mapa e toque em buscar nesta área.',
-                )
-              : _MapaComBusca(
-                  locais: _locais,
-                  encontrados: _encontrados,
-                  busca: _busca,
-                  focoBusca: _focoBusca,
-                  termo: _termo,
-                  mapaExpandido: _mapaExpandido,
-                  mapaMovido: _mapaMovido,
-                  buscandoPlaces: _buscandoPlaces,
-                  onMapCreated: (controller) => _mapController = controller,
-                  onCameraMove: (position) => _centroAtual = position.target,
-                  onCameraIdle: () {
-                    if (mounted) setState(() => _mapaMovido = true);
-                  },
-                  onSelecionar: _selecionarLocal,
-                  onBuscarNestaArea: _buscarNestaArea,
-                  onLimparBusca: _busca.clear,
-                  onAlternarExpansao: () {
-                    _fecharTeclado();
-                    setState(() => _mapaExpandido = !_mapaExpandido);
-                  },
-                ),
+          : _MapaComBusca(
+              locais: _locais,
+              encontrados: _encontrados,
+              busca: _busca,
+              focoBusca: _focoBusca,
+              termo: _termo,
+              mapaExpandido: _mapaExpandido,
+              mapaMovido: _mapaMovido,
+              buscandoPlaces: _buscandoPlaces,
+              onMapCreated: (controller) => _mapController = controller,
+              onCameraMove: (position) => _centroAtual = position.target,
+              onCameraIdle: () {
+                if (mounted) setState(() => _mapaMovido = true);
+              },
+              onSelecionar: _selecionarLocal,
+              onBuscarNestaArea: _buscarNestaArea,
+              onLimparBusca: _busca.clear,
+              onAlternarExpansao: () {
+                _fecharTeclado();
+                setState(() => _mapaExpandido = !_mapaExpandido);
+              },
+            ),
     );
   }
 }
@@ -293,11 +287,17 @@ class _MapaComBusca extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final centro = LatLng(
-      locais.map((e) => e.latitude!).reduce((a, b) => a + b) / locais.length,
-      locais.map((e) => e.longitude!).reduce((a, b) => a + b) / locais.length,
-    );
     final marcadoresVisiveis = termo.trim().isEmpty ? locais : encontrados;
+    final centro = marcadoresVisiveis.isEmpty
+        ? const LatLng(-29.98, -51.18)
+        : LatLng(
+            marcadoresVisiveis.map((e) => e.latitude!).reduce((a, b) => a + b) /
+                marcadoresVisiveis.length,
+            marcadoresVisiveis
+                    .map((e) => e.longitude!)
+                    .reduce((a, b) => a + b) /
+                marcadoresVisiveis.length,
+          );
 
     return Stack(
       children: [

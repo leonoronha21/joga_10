@@ -13,9 +13,15 @@ class AutenticarUsuario {
 
   Future<Usuario?> execute(String login, String senha) async {
     final loginNormalizado = login.trim().toLowerCase();
-    final autenticador = autenticadores.firstWhere(
-      (item) => item.aceita(loginNormalizado),
-    );
+    Autenticador? autenticador;
+    for (final item in autenticadores) {
+      if (item.aceita(loginNormalizado)) {
+        autenticador = item;
+        break;
+      }
+    }
+    if (autenticador == null) return null;
+
     final usuario = await autenticador.autenticar(loginNormalizado, senha);
     if (usuario != null) await sessao.salvar(usuario);
     return usuario;

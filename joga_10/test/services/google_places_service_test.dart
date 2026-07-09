@@ -150,4 +150,37 @@ void main() {
     expect(locais, hasLength(1));
     expect(locais.single.nome, 'Planet Ball');
   });
+
+  test('faz fallback sem area quando busca esportiva local vem vazia',
+      () async {
+    var chamadasComArea = 0;
+    var chamadasSemArea = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      if ((call.arguments as Map).containsKey('latitude')) {
+        chamadasComArea++;
+        return [];
+      }
+      chamadasSemArea++;
+      return [
+        {
+          'placeId': 'global-arena',
+          'name': 'Arena Global',
+          'formattedAddress': 'Rua do Esporte, 20',
+          'latitude': -23.55,
+          'longitude': -46.63,
+        }
+      ];
+    });
+
+    final locais = await service.buscarTextoEsportivo(
+      termo: 'Arena Global',
+      centro: const LatLng(-30, -51),
+    );
+
+    expect(chamadasComArea, 5);
+    expect(chamadasSemArea, 5);
+    expect(locais, hasLength(1));
+    expect(locais.single.nome, 'Arena Global');
+  });
 }

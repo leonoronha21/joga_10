@@ -10,6 +10,8 @@ import 'package:joga_10/pages/verificacao_identidade_page.dart';
 import 'package:joga_10/pages/goleiro_perfil_page.dart';
 import 'package:joga_10/pages/goleiros_page.dart';
 import 'package:joga_10/pages/minha_jornada_page.dart';
+import 'package:joga_10/pages/privacidade_page.dart';
+import 'package:joga_10/pages/sobre_page.dart';
 import 'package:joga_10/repositories/usuario_repository.dart';
 import 'package:joga_10/services/sessao.dart';
 import 'package:joga_10/theme/app_colors.dart';
@@ -230,6 +232,24 @@ class _PerfilPageState extends State<PerfilPage> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const GoleiroPerfilPage()),
+                ),
+              ),
+              _item(
+                icon: Icons.info_outline,
+                titulo: 'Sobre o Joga 10',
+                subtitulo: 'Versão do app e proposta do MVP',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SobrePage()),
+                ),
+              ),
+              _item(
+                icon: Icons.privacy_tip_outlined,
+                titulo: 'Privacidade',
+                subtitulo: 'Dados, permissões e exclusão de conta',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PrivacidadePage()),
                 ),
               ),
               // "Torne-se parceiro" oculto por ora — será habilitado em uma

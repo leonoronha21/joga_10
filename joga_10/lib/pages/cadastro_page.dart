@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:joga_10/application/use_cases/cadastrar_usuario.dart';
+import 'package:joga_10/config/build_config.dart';
 import 'package:joga_10/core/app_dependencies.dart';
 import 'package:joga_10/domain/contracts/usuario_repository_contract.dart';
 import 'package:joga_10/pages/home_shell.dart';
 import 'package:joga_10/theme/app_colors.dart';
+import 'package:joga_10/widgets/common.dart';
 import 'package:joga_10/widgets/partida_link_redirect.dart';
 
 class CadastroPage extends StatefulWidget {
@@ -111,6 +113,17 @@ class _CadastroPageState extends State<CadastroPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!BuildConfig.localAuthEnabled) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Criar conta')),
+        body: const EmptyState(
+          icone: Icons.lock_outline,
+          titulo: 'Cadastro local indisponível',
+          mensagem: 'Use o login com Google para acessar o app.',
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Criar conta')),
       body: Form(

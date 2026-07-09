@@ -35,6 +35,8 @@ migrate_working_dir/
 
 # Segredos locais de plataforma. Nunca versionar chaves do Google Maps.
 /ios/Flutter/GoogleMapsSecrets.xcconfig
+/android/key.properties
+/android/app/upload-keystore.jks
 
 # Symbolication related
 app.*.symbols

@@ -1068,7 +1068,7 @@ class PartidaRepository implements PartidaRepositoryContract {
     required Map<int, int> golsPorMembro,
   }) async {
     final partida = await _documentoPartida(partidaId);
-    if (partida == null) return;
+    if (partida == null) throw StateError('Partida não encontrada.');
     final batch = _firestore.batch();
     batch.update(partida.reference, {
       'status': PartidaStatus.finalizada,
@@ -1092,7 +1092,7 @@ class PartidaRepository implements PartidaRepositoryContract {
     String? equipeEditada,
   }) async {
     final partida = await _documentoPartida(partidaId);
-    if (partida == null) return;
+    if (partida == null) throw StateError('Partida não encontrada.');
     final batch = _firestore.batch();
     batch.update(partida.reference, {
       if (equipeEditada == null) 'formato': formato,
@@ -1124,7 +1124,7 @@ class PartidaRepository implements PartidaRepositoryContract {
     String? telefone,
   }) async {
     final partida = await _documentoPartida(partidaId);
-    if (partida == null) return;
+    if (partida == null) throw StateError('Partida não encontrada.');
     // organizadorId vem da partida (denormalizado no membro p/ as regras).
     // O próprio usuário que entra grava seu usuarioId; o organizador pode
     // adicionar convidados. NÃO tocamos no doc da partida aqui: isso permitiria
